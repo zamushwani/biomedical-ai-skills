@@ -449,6 +449,281 @@ Seurat offers only `markvariogram` and `moransi`, neither in the benchmark's top
 
 ---
 
+## Deconvolution
+
+Only for sequencing-based platforms. A Visium spot holds 1-10 cells, so every spot is a mixture. Deconvolution estimates the cell type proportions per spot from a single-cell reference.
+
+Imaging-based platforms do not have this problem and do not need this section. Skip to *Cell Typing on Segmented Data*.
+
+### Method selection
+
+```
+Which deconvolution method?
+
+  Default first choice, Visium
+    -> RCTD (rctd_mode="full"). Wins or ties on real-data comparisons,
+       fastest of the accurate methods, CPU-parallel, no GPU needed.
+
+  Multi-sample spatial data with real platform/batch effects, rare cell types,
+  and a GPU available
+    -> cell2location. Model the reference batch structure explicitly.
+       Run detection_alpha at both 20 and 200 and compare.
+
+  Composition expected to vary smoothly across the tissue
+    -> CARDspa (CAR prior) or SONAR.
+
+  >200k spots, or Visium HD at 2 um
+    -> RCTD or FlashDeconv. cell2location becomes impractical at that scale.
+
+  ALWAYS, alongside whichever you pick
+    -> An NNLS or marker-signature-scoring baseline.
+```
+
+### Why the baseline is not optional
+
+Two independent benchmarks found simple methods competitive with dedicated ones.
+
+```
+Spotless (eLife 2024;12:RP88431), 11 methods, 63 silver + 3 gold standards:
+  "a simple regression model outperforms almost half of the dedicated
+   spatial deconvolution methods"
+  All other methods ranked worse than NNLS on at least one metric.
+  Top performers: RCTD and cell2location.
+
+Sun et al. (bioRxiv 2026, doi:10.64898/2026.01.13.699379):
+  "a simple marker gene signature scoring approach performs competitively,
+   often outperforming more complex models, particularly for rare cell types"
+  Works without a matched single-cell reference.
+
+spDDB (bioRxiv 2026, doi:10.64898/2026.05.11.724248), 21 methods, 37 datasets:
+  Cell2location, RCTD, and SONAR top across tissue types, but performance
+  "varied substantially based on tissue architecture, spatial technology,
+   dataset scale, and cell type diversity."
+```
+
+Run the baseline. Accept the sophisticated method only when it beats it on your data.
+
+### RCTD: two packages share the name
+
+This trips up anyone following older tutorials.
+
+| | Bioconductor `spacexr` 1.4.0 | GitHub `dmcable/spacexr` 2.2.1 |
+|---|---|---|
+| API | `createRctd()` / `runRctd()` | `create.RCTD()` / `run.RCTD()` |
+| Objects | SpatialExperiment in and out | custom `SpatialRNA` / `Reference` |
+| CSIDE | not ported | included |
+| Weights orientation | cell types x pixels | pixels x cell types |
+
+Old `create.RCTD` code does not run against the Bioconductor package, and the weights matrix is transposed between them.
+
+```r
+library(spacexr)  # Bioconductor 1.4.0
+
+rctd_data <- createRctd(
+  spatial_experiment  = spe,
+  reference_experiment = ref_sce,
+  cell_type_col = "cell_type"
+)
+
+spe_out <- runRctd(rctd_data, rctd_mode = "full", max_cores = 4)
+
+# weights assay is cell types x pixels; columns sum to 1 except rejected pixels
+props <- assay(spe_out, "weights")
+```
+
+```
+Mode selection:
+  full     any number of cell types per pixel. Use for Visium proportions.
+  doublet  at most two types, classified singlet/doublet. Use at ~cell scale
+           (Slide-seq, MERFISH, 16 um HD bins) when you want a discrete call.
+  multi    greedy fit of up to max_multi_types (default 4). Sparse discrete set.
+```
+
+`doublet` mode has a second use on imaging platforms: a pixel called "doublet" is a signal that segmentation fused two cells.
+
+### cell2location
+
+Two-step: fit reference signatures with a negative binomial regression, then map to space.
+
+```python
+import cell2location
+from cell2location.models import RegressionModel, Cell2location
+from cell2location.utils.filtering import filter_genes
+
+# Step 0: gene filtering. Package defaults are 15 / 0.05 / 1.12; the official
+# tutorial loosens them to keep rare-cell-type markers.
+selected = filter_genes(adata_ref, cell_count_cutoff=5,
+                        cell_percentage_cutoff2=0.03, nonz_mean_cutoff=1.12)
+adata_ref = adata_ref[:, selected].copy()
+
+# Step 1: reference signatures. Declaring batch structure here is what removes
+# reference platform effects. Skipping it is a common cause of bad output.
+RegressionModel.setup_anndata(
+    adata_ref, layer="counts",
+    batch_key="sample",                       # donor / technical batch
+    labels_key="cell_type",
+    categorical_covariate_keys=["method"],    # chemistry / protocol
+)
+ref_mod = RegressionModel(adata_ref)
+ref_mod.train(max_epochs=250, accelerator="gpu", devices=1)
+adata_ref = ref_mod.export_posterior(adata_ref)
+
+signatures = adata_ref.varm["means_per_cluster_mu_fg"]
+
+# Step 2: spatial mapping
+Cell2location.setup_anndata(adata_vis, layer="counts", batch_key="sample")
+mod = Cell2location(
+    adata_vis, cell_state_df=signatures,
+    N_cells_per_location=30,   # count nuclei in 10-20 spots on the paired H&E
+    detection_alpha=20,        # 20 for high within-slide technical variation, 200 for low
+)
+mod.train(max_epochs=30000, batch_size=None, train_size=1,
+          accelerator="gpu", devices=1)
+adata_vis = mod.export_posterior(adata_vis)
+
+props = adata_vis.obsm["q05_cell_abundance_w_sf"]
+```
+
+```
+use_gpu=True is an ERROR, not a warning.
+  scvi-tools deprecated it in 1.0.4 and REMOVED it in 1.1.0.
+  Much of the published cell2location tutorial material still uses it.
+  Pass accelerator="gpu", devices=1 instead.
+
+Never hold out data: train_size=1. You need an abundance estimate at
+every location, so there is no validation split to make.
+```
+
+### Tangram
+
+```python
+# PyPI tangram-sc is frozen at 1.0.4 (2023-02-09). The refinement regularizers
+# merged to master in 2025 were never released.
+import scvi
+model = scvi.external.Tangram(mdata)     # PyTorch backend since scvi-tools 1.5.0
+model.train(max_epochs=1000, accelerator="auto")
+mapper = model.get_mapper_matrix()
+```
+
+`scvi.external.Tangram` supports only `cells` and `constrained` modes. It has no `clusters` mode, so it is not a drop-in for the cheap cluster-level Visium workflow that `tangram-sc` offers.
+
+### SPOTlight
+
+```r
+library(SPOTlight)
+
+# mgs comes from scran::scoreMarkers. This seeding dominates output quality.
+res <- SPOTlight(x = sce, y = spe, groups = sce$cell_type, mgs = mgs,
+                 gene_id = "gene", group_id = "cluster", weight_id = "weight")
+props <- res$mat
+```
+
+Make sure `groups` is not a factor. SPOTlight is the only one of these four that accepts pre-normalized input.
+
+### Reference atlas requirements
+
+```
+Counts format
+  Raw, integer, untransformed counts for RCTD and cell2location.
+  RCTD errors outright on non-integers (require_int = TRUE).
+  Do not log-transform, scale, or subset to HVGs before deconvolution.
+  SPOTlight is the exception and accepts normalized input.
+
+Hard minimums encoded in RCTD
+  >= 25 cells per cell type      types below this are silently DROPPED
+  <= 10,000 cells per type       downsampled above this
+  >= 100 UMI per reference cell
+  >= 100 UMI per spatial pixel
+  gene observed in >= 3 pixels
+
+Annotation granularity
+  Match it to the question. A 40-subtype reference on 55 um spots produces
+  proportions you cannot defend. Use RCTD's class_df for a coarse fallback.
+
+Reference choice
+  Same tissue, condition, and ideally cohort. Multi-patient same-indication
+  atlases hold up well; cross-patient references degrade accuracy.
+  Even small references work: "even small reference datasets can yield
+  accurate deconvolution results" (bioRxiv 2026, doi:10.64898/2026.01.09.698566).
+```
+
+Treat output proportions as **relative and comparative, not absolute**. The same study found prominent types are spatially localized correctly but "systematically under- or over-estimated" in magnitude. Compare a cell type across regions or conditions, not against its true percentage.
+
+---
+
+## Cell Typing on Segmented Data
+
+For Xenium, MERSCOPE, and CosMx. The dominant error source is segmentation, not typing.
+
+### Segmentation
+
+| Tool | Approach | Notes |
+|------|----------|-------|
+| Xenium Ranger v4.0 | boundary stain, then interior stain, then DAPI expansion | `--expansion-distance` default 5 um since v2.0. v4.0 adds `--segment-large-cells` |
+| Proseg 3.2.0 | cellular Potts model over transcript positions | Best average performance in the CRISP benchmark. Needs a prior segmentation for cell count and location |
+| Baysor 0.8.3 | Bayesian, transcript-only or with nuclear prior | C++ port since 0.8.0; the Julia line ended at 0.7.1 |
+| segger | heterogeneous GNN, transcript-to-cell link prediction | GPU recommended, not required |
+| bin2cell | StarDist on H&E, expanded into 2 um HD bins | CPU only, ~15 min on the demo |
+
+```
+The CRISP benchmark (bioRxiv 2026, doi:10.64898/2026.04.16.718947), five
+approaches across ten mouse tissues on a 5,006-gene Xenium panel:
+
+  "Proseg achieved the highest average performance across tissues, though
+   the magnitude of its advantage varies with tissue architecture."
+
+  "segmentation algorithms face a fundamental tradeoff between maximizing
+   transcript capture and maintaining cell purity, and the severity of this
+   tradeoff is tissue-dependent."
+
+There is no universally correct segmentation. Check purity on your tissue.
+```
+
+### Contamination correction
+
+Transcripts get assigned to the wrong cell regardless of method. Correct it rather than ignoring it.
+
+```python
+import scvi
+scvi.external.RESOLVI    # generative correction of misassigned molecules,
+                         # background, and batch effects. scvi-tools >= 1.3.0
+```
+
+`SPLIT` (R, RCTD-driven) separates primary from spillover signal. `MisTIC` corrects misassignment without resegmentation.
+
+### Label transfer
+
+```r
+# SingleR was the best reference-based annotator for Xenium in a head-to-head
+# comparison against Azimuth, RCTD, scPred, and scmapCell
+# (Cheng et al., BMC Bioinformatics 2025;26:22)
+library(SingleR)
+pred <- SingleR(test = spe, ref = ref_sce, labels = ref_sce$cell_type)
+```
+
+Python: scANVI, popV (ensemble with ontology voting and uncertainty scores), CellTypist.
+
+Subset the reference to the panel genes before training. A 5,000-gene Xenium panel cannot support annotation granularity that depends on genes it does not measure.
+
+### Visium HD sits in between
+
+```
+2 um bins   sub-cellular. Do NOT deconvolve. Reconstruct cells (bin2cell or a
+            segmented workflow), then annotate.
+8 um bins   10x's recommended unit, still multi-cell. Deconvolve.
+16 um bins  deconvolve; RCTD doublet mode works well here.
+
+Resolution horizon (FlashDeconv, bioRxiv doi:10.64898/2025.12.22.696108):
+  bins dominated by a single cell type (>80%) fall from 61.5% at 8 um
+  to 13.3% at 16 um.
+  Cell-cell correlations can INVERT with bin size: Paneth-Goblet
+  r = -0.12 at 8 um becomes +0.80 at 64 um.
+
+Bin size is not a display choice. It changes the biology you infer.
+```
+
+---
+
 ## Common Pitfalls
 
 ### Loading
@@ -470,6 +745,17 @@ Seurat offers only `markvariogram` and `moransi`, neither in the benchmark's top
 12. **Using SpatialDE at modern scale**: unmaintained since 2019 and needs ~150 GB at 40k spots. SpatialDE2 was never released to PyPI.
 13. **Wrong neighbourhood graph for the platform**: Visium is a hex grid (`n_neighs=6`). Using a generic k-NN graph on grid data, or a grid assumption on imaging data, distorts every spatial statistic downstream.
 14. **Comparing Geary's C across squidpy 1.8.2**: the variance calculation changed. Re-run rather than compare.
+
+### Deconvolution
+15. **Skipping the simple baseline**: two independent benchmarks found NNLS and marker-signature scoring competitive with dedicated methods, and better than several of them. Run one, and justify the sophisticated method against it.
+16. **Following an old RCTD tutorial against the Bioconductor package**: `create.RCTD`/`run.RCTD` and `createRctd`/`runRctd` are different APIs in two different packages that share the name `spacexr`. The weights matrix is also transposed between them.
+17. **Passing `use_gpu=True` to cell2location**: removed from scvi-tools in 1.1.0, so it raises rather than warns. Much published tutorial material still uses it. Pass `accelerator="gpu", devices=1`.
+18. **Log-transforming or HVG-subsetting before deconvolution**: RCTD and cell2location need raw integer counts. RCTD errors on non-integers; cell2location silently produces nonsense.
+19. **Not declaring reference batch structure in cell2location**: the `RegressionModel` step is where platform and donor effects get removed. Omitting `batch_key` and `categorical_covariate_keys` is a common cause of poor mapping.
+20. **Cell types with fewer than 25 reference cells**: RCTD drops them silently. Check which types survived rather than assuming your full annotation was used.
+21. **Reading proportions as absolute percentages**: they are reliable for comparing a cell type across regions or conditions, and systematically biased in magnitude. Do not report them as true composition.
+22. **Deconvolving single-cell-resolution data**: Xenium, MERSCOPE, and CosMx need segmentation and cell typing. The one legitimate use is RCTD doublet mode as a read-out for segmentation fusion.
+23. **Treating Visium HD bin size as a display setting**: single-cell-type bin fraction drops from 61.5% at 8 um to 13.3% at 16 um, and cell-cell correlations can change sign. Pick the bin size before interpreting anything.
 
 ## Related Skills
 
