@@ -724,6 +724,297 @@ Bin size is not a display choice. It changes the biology you infer.
 
 ---
 
+## Spatial Domains and Niches
+
+### Domain is not niche
+
+These get conflated and they are different questions.
+
+```
+Spatial domain    contiguous tissue region with a shared expression profile
+                  (cortical layer, germinal center, tumor core)
+                  -> spatially smooth, few large regions
+
+Cellular niche    local cell-type composition around a cell, which can recur
+                  in disconnected places across the tissue
+                  -> not necessarily contiguous
+
+A method tuned for domains will merge recurrent niches into one region.
+A method tuned for niches will fragment a smooth domain.
+Pick by which question you are asking, not by which tool is popular.
+```
+
+### Method selection
+
+The benchmarks disagree, and the disagreement is structured: it tracks resolution, gene panel size, and tissue architecture.
+
+| Setting | Use | Avoid |
+|---------|-----|-------|
+| Visium / spot-level, layered tissue | GraphST, STAGATE, PROST, BayesSpace | BANKSY, CellCharter (aggregation hurts at low resolution) |
+| Imaging-based single-cell | BANKSY, BASS, SpaceFlow, CellCharter | GraphST, SpatialPCA (fragile to heterogeneity) |
+| Small panel (<500 genes) | SpaceFlow, SpaDo, BASS, CCST | BANKSY (<~1000 genes), CellCharter (<~100 genes) |
+| Tumor / irregular architecture | CCST, PROST, IRIS | BASS (assumes spatial homogeneity) |
+| Atlas scale (>500k cells) | MENDER, NicheCompass, CellCharter, TACCO | GraphST, SpaGCN, SEDR (fail above ~20k) |
+| Multi-sample with batch effects | CellCharter, BASS, PRECAST, TACCO | most GNN methods have no batch handling |
+
+```
+The sobering result (Descoeudres et al., bioRxiv 2026,
+doi:10.64898/2026.03.12.710462 — 26 methods, 63 sections, 6 technologies):
+
+  "Nearly one-third of methods (9 of 26) perform worse overall than a simple
+   spatial smoothing applied to the scanpy clustering output"
+
+Spatial gains are modest on Visium (max delta-ARI 0.16) and large at high
+resolution (delta-ARI 0.48 MERFISH, 0.32 Slide-seq).
+
+Cellular heterogeneity within a domain, not the algorithm, is the dominant
+determinant of accuracy.
+
+Also: swapping the neural network out of GNN methods changed results little.
+"preprocessing strategies and final clustering choices exert a substantially
+ stronger influence" than the architecture.
+```
+
+Run Leiden with spatial smoothing as your baseline, exactly as with deconvolution.
+
+### BANKSY
+
+Augments each cell's feature vector with a spatially weighted mean of its neighbours. One parameter switches the objective.
+
+```
+lambda = 0     non-spatial, ordinary clustering
+lambda = 0.2   spatial CELL TYPING
+lambda = 0.8   spatial DOMAIN SEGMENTATION
+```
+
+```r
+library(Banksy)
+
+spe <- computeBanksy(spe, assay_name = "normcounts", compute_agf = TRUE, k_geom = c(15, 30))
+# lambda and k_geom are vectorized: fit several at once and compare
+spe <- runBanksyPCA(spe, use_agf = TRUE, lambda = c(0.2, 0.8), npcs = 20)
+spe <- clusterBanksy(spe, use_agf = TRUE, lambda = c(0.2, 0.8), resolution = 1)
+spe <- connectClusters(spe)
+spe <- smoothLabels(spe, k = 15L)
+```
+
+Seurat users: `RunBanksy` lives in **SeuratWrappers**, not Seurat core, and `lambda` is required with no default.
+
+```
+Never call ScaleData after RunBanksy.
+
+RunBanksy populates scale.data with the scaled BANKSY matrix. ScaleData then
+does gene-wise z-scaling and negates the effect of lambda entirely.
+```
+
+BANKSY is the fastest method at scale (~1 min on 100k cells) but degrades sharply below ~1000 genes. Do not use it on a 300-gene panel.
+
+### CellCharter
+
+scVI embedding, then neighbourhood aggregation, then a Gaussian mixture. Handles multi-sample batch effects natively via the scVI `batch_key`, which most graph methods do not.
+
+```python
+import cellcharter as cc
+import scvi
+
+scvi.model.SCVI.setup_anndata(adata, layer="counts", batch_key="sample")
+model = scvi.model.SCVI(adata)
+model.train()
+adata.obsm["X_scVI"] = model.get_latent_representation()
+
+sq.gr.spatial_neighbors_delaunay(adata)
+cc.gr.aggregate_neighbors(adata, n_layers=3, use_rep="X_scVI", out_key="X_cellcharter")
+
+# Pick the number of domains by stability, not by eye
+autok = cc.tl.ClusterAutoK(n_clusters=(2, 15), max_runs=10)
+autok.fit(adata, use_rep="X_cellcharter")
+```
+
+### squidpy neighbourhood statistics
+
+```python
+sq.gr.spatial_neighbors_delaunay(adata)
+
+sq.gr.nhood_enrichment(adata, cluster_key="cell_type", n_perms=1000)
+sq.gr.co_occurrence(adata, cluster_key="cell_type")
+sq.gr.interaction_matrix(adata, cluster_key="cell_type", normalized=True)
+sq.gr.ripley(adata, cluster_key="cell_type", mode="F")
+```
+
+```
+What each one actually answers:
+
+nhood_enrichment   are A and B adjacent more than chance, AT THE SCALE OF
+                   YOUR GRAPH. Entirely determined by the graph you built.
+                   Change n_neighs and the answer changes.
+co_occurrence      the same question as a function of distance, graph-free.
+                   Scales poorly; subsample or use sq.tl.sliding_window.
+interaction_matrix the raw contingency table of adjacencies.
+ripley             single-cluster spatial pattern, not pairwise.
+```
+
+`co_occurrence` was reimplemented in squidpy 1.6.6, so results are not bit-identical to 1.6.5 and earlier.
+
+### Niche calling in one call
+
+```python
+sq.gr.calculate_niche(adata, flavor="cellcharter", distance=3,
+                      aggregation="mean", n_components=10)
+# flavors: "neighborhood", "utag", "cellcharter", "spatialleiden"
+# each requires a different argument set; "spatialleiden" needs sc.pp.neighbors() first
+```
+
+---
+
+## Spatially Resolved Cell-Cell Communication
+
+### Method selection
+
+```
+Cell-type-pair level, "which types talk to which"
+  -> LIANA+ or CellChat v2 spatial mode.
+
+Per-spot / per-cell local interaction maps
+  -> LIANA+ bivariate (li.mt.bivariate). Subsumes SpatialDM's bivariate
+     Moran's R as one local_name option.
+
+Single-cell-resolution data, want maximum benchmarked accuracy
+  -> SpaCCI, CellPhoneDB v3, or CellChat v2.
+
+Do NOT build new pipelines on
+  -> NCEM (unmaintained since 2023), COMMOT via PyPI (0.0.3 is from 2022;
+     install from GitHub if you need it).
+```
+
+```
+Benchmark (Ku et al., Genome Biology 2026;27:163), 9 methods:
+
+  Single-cell-resolution simulations (normalized F1):
+    SpaCCI 92.7 > CellPhoneDB v3 77.4 > CellChat v2 69.6 > SpaTalk 62.2
+  Spot-level simulations:
+    SpaCCI 82.1 > SpaTalk 72.4 > SpatialDM 49.6
+
+  "No single method is universally optimal across all datasets, spatial
+   resolutions, and evaluation criteria."
+
+Distance behaviour splits the methods:
+  proximal-biased  CellChat v2, SpaTalk, SpatialDM, NicheDE, SpaCCI
+  distal-biased    CellPhoneDB v3, COMMOT, SCOTIA
+
+LIANA+ was not in this benchmark. It is recommended here anyway because it is
+the only actively developed framework covering the full range, but that is a
+maintenance argument, not an accuracy claim.
+```
+
+### LIANA+ bivariate
+
+```python
+import liana as li
+
+# Bandwidth is in coordinate units. For Visium, 150-200 pixels covers roughly
+# the first hexagonal ring (6 neighbours).
+li.ut.spatial_neighbors(adata, bandwidth=200, cutoff=0.1,
+                        kernel="gaussian", set_diag=True)   # set_diag for multi-cell spots
+
+lrdata = li.mt.bivariate(
+    adata, resource_name="consensus",
+    local_name="cosine",     # "morans" reproduces SpatialDM
+    global_name="morans",
+    n_perms=100, mask_negatives=False, add_categories=True, nz_prop=0.2,
+)
+# lrdata.X = local scores, .layers["pvals"], .layers["cats"], .var = global summaries
+
+li.mu.nmf(lrdata, k_range=range(1, 11))    # factorize into interaction programs
+```
+
+Use `li.ut.query_bandwidth` to pick the bandwidth from your coordinates rather than guessing.
+
+### CellChat v2 spatial
+
+```r
+# Convert pixels to microns first. Getting this wrong silently rescales every
+# distance threshold below.
+spot.size <- 65                                                  # Visium spot diameter, um
+conversion.factor <- spot.size / scalefactors$spot_diameter_fullres
+spatial.factors <- data.frame(ratio = conversion.factor, tol = spot.size / 2)
+
+cellchat <- createCellChat(object = data.input, meta = meta, group.by = "labels",
+                           datatype = "spatial", coordinates = spatial.locs,
+                           spatial.factors = spatial.factors)
+
+cellchat <- computeCommunProb(
+  cellchat, type = "truncatedMean", trim = 0.1,
+  distance.use = TRUE, interaction.range = 250,   # um, caps secreted signalling
+  scale.distance = 0.01,
+  contact.dependent = TRUE, contact.range = 100   # 100 um Visium; 10 um for imaging
+)
+```
+
+`contact.range` is 100 um for Visium and 10 um (one cell diameter) for single-cell-resolution platforms. `scale.factors` was renamed `spatial.factors` in CellChat 2.1.1, so older objects need `updateCellChat()`.
+
+---
+
+## Niche-Specific Differential Expression
+
+Three different questions get called "niche DE". Only one of them is inferential.
+
+```
+(A) "Which genes mark domain D vs the rest, in one sample?"
+    A cluster-marker problem. Effective n = 1. Report effect sizes.
+    Do not attach p-values and call it DE.
+
+(B) "Does domain D differ between conditions across samples?"
+    Pseudobulk by sample x domain, then test the condition:domain
+    interaction term. This is the one with real inference.
+
+(C) "Within cell type X, which genes change with the neighbourhood?"
+    niche-DE proper. Use smiDE (imaging) or niche-DE (spot-level).
+```
+
+### (B) Pseudobulk with an interaction term
+
+```r
+library(DESpace)
+
+dsp <- dsp_test(spe, sample_col = "sample_id", condition_col = "condition",
+                cluster_col = "domain", verbose = TRUE)
+dsp$gene_results
+```
+
+```python
+import decoupler as dc          # 2.2.0
+
+# dc.get_pseudobulk was REMOVED in decoupler 2.0.
+pdata = dc.pp.pseudobulk(adata, sample_col="sample_id", groups_col="domain",
+                         layer="counts", mode="sum")
+# min_cells / min_counts moved out of pseudobulk into filter_samples
+dc.pp.filter_samples(pdata, min_cells=10, min_counts=1000)
+# then PyDESeq2 with design "~ condition + domain + condition:domain"
+```
+
+Aggregate raw counts. Keep sample as the replication unit. Drop tiny (sample, domain) pseudobulks.
+
+### Why cell-level tests fail here
+
+```
+smiDE (Genome Biology 2026;27:21) measured type-I error for cell-level
+approaches on spatial data:
+  DESeq2 0.95, MAST / Seurat / NB-GLM ~0.90, C-SIDE 0.86
+
+On a 426-gene neuron panel:
+  C-SIDE            252 DE genes
+  niche-DE          269 (NB) / 241 (Gaussian)
+  smiDE naive       178 (Bonferroni) / 262 (FDR)
+  smiDE spatial       3
+
+Segmentation bleed and spatial autocorrelation both manufacture significance.
+Neighbouring cells are not independent observations.
+```
+
+Never run Wilcoxon across conditions at spot or cell level.
+
+---
+
 ## Common Pitfalls
 
 ### Loading
@@ -756,6 +1047,21 @@ Bin size is not a display choice. It changes the biology you infer.
 21. **Reading proportions as absolute percentages**: they are reliable for comparing a cell type across regions or conditions, and systematically biased in magnitude. Do not report them as true composition.
 22. **Deconvolving single-cell-resolution data**: Xenium, MERSCOPE, and CosMx need segmentation and cell typing. The one legitimate use is RCTD doublet mode as a read-out for segmentation fusion.
 23. **Treating Visium HD bin size as a display setting**: single-cell-type bin fraction drops from 61.5% at 8 um to 13.3% at 16 um, and cell-cell correlations can change sign. Pick the bin size before interpreting anything.
+
+### Domains and niches
+24. **Using `sq.gr.spatial_neighbors`**: deprecated since squidpy 1.7.0 and removed in 1.9.0. Use `spatial_neighbors_knn`, `_radius`, `_delaunay`, or `_grid`. When passing a `SpatialData` object, `table_key` is required.
+25. **Skipping the smoothed-Leiden baseline**: nearly a third of published domain methods scored worse than spatial smoothing applied to plain scanpy clustering. Spatial gains on Visium are small; they are large only at single-cell resolution.
+26. **Running BANKSY on a small panel**: accuracy drops sharply below ~1000 genes, and CellCharter below ~100. On a 300-gene panel use SpaceFlow, SpaDo, BASS, or CCST.
+27. **Calling `ScaleData` after `RunBanksy`**: it overwrites the scaled BANKSY matrix with gene-wise z-scores and cancels the `lambda` weighting entirely.
+28. **Reading `nhood_enrichment` as a property of the tissue**: it is a property of the graph you built. Changing `n_neighs` or the builder changes the result. Report the graph alongside the statistic.
+29. **Choosing a domain method tuned for the wrong objective**: domain methods merge recurrent niches; niche methods fragment smooth domains. Decide which question you are asking first.
+30. **Getting the pixel-to-micron conversion wrong in CellChat**: every distance threshold (`interaction.range`, `contact.range`) is in microns. A wrong `ratio` silently rescales all of them.
+
+### Niche differential expression
+31. **Wilcoxon across conditions at spot or cell level**: measured type-I error is ~0.90-0.95. Neighbouring spots are not independent. Pseudobulk by sample x domain and test the interaction term.
+32. **Attaching p-values to single-sample domain markers**: with one sample the effective n is 1. Report effect sizes, or get more samples.
+33. **Using `dc.get_pseudobulk`**: removed in decoupler 2.0. It is `dc.pp.pseudobulk`, and `min_cells`/`min_counts` moved to `dc.pp.filter_samples`.
+34. **Ignoring segmentation bleed in imaging-based DE**: transcripts assigned to the wrong cell manufacture differential expression. A spatially aware model found 3 genes where naive models found 178-262 on the same panel.
 
 ## Related Skills
 
