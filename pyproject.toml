@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "zamushwani" }]
+authors = [{ name = "Hussain Zubair" }]
+maintainers = [{ name = "Hussain Zubair" }]
 keywords = [
     "bioinformatics",
     "cancer-genomics",
@@ -70,4 +71,5 @@ include = [
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
+    "CITATION.cff",
 ]

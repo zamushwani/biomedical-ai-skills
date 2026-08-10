@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "Biomedical AI Skills"
+message: "If you use these skills in your research, please cite this repository."
+type: software
+authors:
+  - given-names: Hussain
+    family-names: Zubair
+    alias: zamushwani
+repository-code: "https://github.com/zamushwani/biomedical-ai-skills"
+url: "https://github.com/zamushwani/biomedical-ai-skills"
+abstract: >-
+  SKILL.md files that give AI coding agents tested protocols for cancer
+  bioinformatics, covering bulk multi-omics, immune deconvolution, survival
+  analysis, single-cell atlases, spatial transcriptomics, and single-cell
+  foundation models. Each skill is validated against public datasets.
+keywords:
+  - bioinformatics
+  - cancer-genomics
+  - single-cell
+  - spatial-transcriptomics
+  - multi-omics
+  - ai-agent
+license: MIT
+version: 0.2.1
+date-released: "2026-08-10"
