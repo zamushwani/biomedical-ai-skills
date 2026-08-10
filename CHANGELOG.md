@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-10
+
+### Fixed
+- README links were relative, so all 16 of them broke on the PyPI project page. Now absolute, which works on both GitHub and PyPI
+- Replaced the mermaid workflow diagram with a rendered image. Mermaid is not supported on PyPI and was showing as raw source
+
+### Added
+- PyPI version, monthly downloads, and supported-Python badges
+
 ## [0.2.1] - 2026-08-10
 
 ### Added
@@ -42,7 +51,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zamushwani/biomedical-ai-skills/releases/tag/v0.1.0
