@@ -4,9 +4,9 @@
 
 SKILL.md files for cancer bioinformatics. Drop one into your project and your AI coding agent handles TCGA data, normalization, and statistics correctly.
 
-[![GitHub Stars](https://img.shields.io/github/stars/zamushwani2/biomedical-ai-skills?style=for-the-badge&logo=github&logoColor=white&labelColor=1a1a2e&color=00d9ff)](https://github.com/zamushwani2/biomedical-ai-skills/stargazers)
-[![License](https://img.shields.io/github/license/zamushwani2/biomedical-ai-skills?style=for-the-badge&labelColor=1a1a2e&color=4ecdc4)](LICENSE)
-[![Last Commit](https://img.shields.io/github/last-commit/zamushwani2/biomedical-ai-skills?style=for-the-badge&logo=git&logoColor=white&labelColor=1a1a2e&color=ff6b6b)](https://github.com/zamushwani2/biomedical-ai-skills/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/zamushwani/biomedical-ai-skills?style=for-the-badge&logo=github&logoColor=white&labelColor=1a1a2e&color=00d9ff)](https://github.com/zamushwani/biomedical-ai-skills/stargazers)
+[![License](https://img.shields.io/github/license/zamushwani/biomedical-ai-skills?style=for-the-badge&labelColor=1a1a2e&color=4ecdc4)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/zamushwani/biomedical-ai-skills?style=for-the-badge&logo=git&logoColor=white&labelColor=1a1a2e&color=ff6b6b)](https://github.com/zamushwani/biomedical-ai-skills/commits/main)
 
 [![R](https://img.shields.io/badge/R-≥_4.3-276DC3?style=flat-square&logo=r&logoColor=white&labelColor=1a1a2e)](https://www.r-project.org/)
 [![Bioconductor](https://img.shields.io/badge/Bioconductor-3.19-87b13f?style=flat-square&labelColor=1a1a2e)](https://bioconductor.org/)
@@ -42,20 +42,27 @@ graph LR
 ## Quick start
 
 ```bash
-git clone https://github.com/zamushwani2/biomedical-ai-skills.git
+pip install biomedical-ai-skills
 ```
 
-Copy a skill into your project:
+From your project directory:
 
 ```bash
-# Claude Code
-cp skills/cancer-multiomics/SKILL.md your-project/.claude/skills/
+biomedical-skills list                                    # what's available
+biomedical-skills install spatial-transcriptomics         # -> .claude/skills/
+biomedical-skills install --all                           # everything
+biomedical-skills install cancer-multiomics --target .cursor/skills
+```
 
-# Cursor
-cp skills/cancer-multiomics/SKILL.md your-project/.cursor/skills/
+No dependencies, so it installs in a couple of seconds.
 
-# Any agent that reads SKILL.md
-cp skills/cancer-multiomics/SKILL.md your-project/SKILL.md
+Or skip the package and copy the files directly:
+
+```bash
+git clone https://github.com/zamushwani/biomedical-ai-skills.git
+
+mkdir -p your-project/.claude/skills/cancer-multiomics
+cp skills/cancer-multiomics/SKILL.md your-project/.claude/skills/cancer-multiomics/
 ```
 
 ## What's a SKILL.md?

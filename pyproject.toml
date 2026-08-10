@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "biomedical-ai-skills"
+version = "0.2.1"
+description = "SKILL.md files that give AI coding agents tested protocols for cancer bioinformatics"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "zamushwani" }]
+keywords = [
+    "bioinformatics",
+    "cancer-genomics",
+    "single-cell",
+    "spatial-transcriptomics",
+    "multi-omics",
+    "ai-agent",
+    "claude-code",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/zamushwani/biomedical-ai-skills"
+Source = "https://github.com/zamushwani/biomedical-ai-skills"
+Changelog = "https://github.com/zamushwani/biomedical-ai-skills/blob/main/CHANGELOG.md"
+Issues = "https://github.com/zamushwani/biomedical-ai-skills/issues"
+
+[project.scripts]
+biomedical-skills = "biomedical_ai_skills.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/biomedical_ai_skills"]
+
+# Skills are listed one by one on purpose. `skills/` also holds unreviewed
+# drafts that are excluded from git, and a directory-wide include would ship
+# them to PyPI, where releases cannot be edited. Adding a skill here is a
+# deliberate step.
+[tool.hatch.build.targets.wheel.force-include]
+"skills/cancer-multiomics/SKILL.md" = "biomedical_ai_skills/skills/cancer-multiomics/SKILL.md"
+"skills/immune-deconvolution/SKILL.md" = "biomedical_ai_skills/skills/immune-deconvolution/SKILL.md"
+"skills/survival-analysis/SKILL.md" = "biomedical_ai_skills/skills/survival-analysis/SKILL.md"
+"skills/single-cell-atlas/SKILL.md" = "biomedical_ai_skills/skills/single-cell-atlas/SKILL.md"
+"skills/spatial-transcriptomics/SKILL.md" = "biomedical_ai_skills/skills/spatial-transcriptomics/SKILL.md"
+"skills/foundation-models/SKILL.md" = "biomedical_ai_skills/skills/foundation-models/SKILL.md"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/biomedical_ai_skills",
+    "skills/cancer-multiomics",
+    "skills/immune-deconvolution",
+    "skills/survival-analysis",
+    "skills/single-cell-atlas",
+    "skills/spatial-transcriptomics",
+    "skills/foundation-models",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+]
