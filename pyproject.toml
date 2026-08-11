@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "biomedical-ai-skills"
-version = "0.2.2"
+version = "0.2.3"
 description = "SKILL.md files that give AI coding agents tested protocols for cancer bioinformatics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -58,6 +58,7 @@ packages = ["src/biomedical_ai_skills"]
 "skills/single-cell-atlas/SKILL.md" = "biomedical_ai_skills/skills/single-cell-atlas/SKILL.md"
 "skills/spatial-transcriptomics/SKILL.md" = "biomedical_ai_skills/skills/spatial-transcriptomics/SKILL.md"
 "skills/foundation-models/SKILL.md" = "biomedical_ai_skills/skills/foundation-models/SKILL.md"
+"skills/meta-analysis/SKILL.md" = "biomedical_ai_skills/skills/meta-analysis/SKILL.md"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -68,6 +69,7 @@ include = [
     "skills/single-cell-atlas",
     "skills/spatial-transcriptomics",
     "skills/foundation-models",
+    "skills/meta-analysis",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

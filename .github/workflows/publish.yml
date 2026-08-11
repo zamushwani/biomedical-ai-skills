@@ -36,6 +36,7 @@ jobs:
               "single-cell-atlas",
               "spatial-transcriptomics",
               "foundation-models",
+              "meta-analysis",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {

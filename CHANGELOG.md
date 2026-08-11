@@ -6,10 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Added
-- meta-analysis skill (Part 1 — study selection): PROSPERO pre-specification, PICO search construction with MeSH/Emtree syntax and the Cochrane Highly Sensitive Search Strategy, programmatic PubMed retrieval via rentrez, deduplication with synthesisr, two-reviewer screening with Cohen's and Fleiss' kappa, PRISMA 2020 flow diagrams with the arithmetic that has to reconcile, data extraction templates and median-to-mean conversions, risk of bias tool selection (RoB 2, ROBINS-I, ROBINS-E, QUADAS-2, QUIPS, ROB ME, Newcastle-Ottawa) and robvis visualization
+## [0.2.3] - 2026-08-11
 
-Not yet in the pip package: the skill ships to PyPI once the remaining parts and its validation tests are done.
+### Added
+- meta-analysis skill (study selection): PROSPERO pre-specification, PICO search construction with MeSH/Emtree syntax and the Cochrane Highly Sensitive Search Strategy, programmatic PubMed retrieval via rentrez, deduplication with synthesisr, two-reviewer screening with Cohen's and Fleiss' kappa, PRISMA 2020 flow diagrams with the arithmetic that has to reconcile, data extraction templates and median-to-mean conversions, risk of bias tool selection (RoB 2, ROBINS-I, ROBINS-E, QUADAS-2, QUIPS, ROB ME, Newcastle-Ottawa) and robvis visualization
+- Skills badge restored to the README, now at 7
 
 ## [0.2.2] - 2026-08-10
 
@@ -56,7 +57,8 @@ Not yet in the pip package: the skill ships to PyPI once the remaining parts and
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.1.0...v0.2.0
