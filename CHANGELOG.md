@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 - meta-analysis skill (effect estimation): effect measure selection, `escalc()` for binary, continuous and time-to-event outcomes, equal-effects vs fixed-effects vs random-effects models, tau^2 estimator choice, the Knapp-Hartung adjustment, heterogeneity quantification with prediction intervals, subgroup analysis via the omnibus moderator test, meta-regression, hazard ratio reconstruction from published Kaplan-Meier curves, and forest plots
 - Documented the metafor 5.0 default changes that silently alter results relative to 4.x: bias correction now applied by default for `ROM`, `ROMC`, `CVR` and `CVRC`, and a changed default `add` for eight measures
+- meta-analysis skill (advanced methods): small-study effects with the five competing explanations for funnel asymmetry, Egger's regression under the k >= 10 rule, trim-and-fill framed as a sensitivity analysis per the Cochrane Handbook, selection models and Copas/limit meta-analysis as principled alternatives, leave-one-out and influence and Baujat and cumulative diagnostics, network meta-analysis with transitivity assessed before fitting, correlated multi-arm handling via `pairwise()`, inconsistency via node-splitting and design-by-treatment decomposition, ranking with its instability caveats, Bayesian NMA, and GRADE/CINeMA certainty rating
 
 ## [0.2.3] - 2026-08-11
 

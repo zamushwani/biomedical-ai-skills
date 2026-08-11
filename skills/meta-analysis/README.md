@@ -1,6 +1,6 @@
 # meta-analysis
 
-Systematic review and meta-analysis for clinical and preclinical evidence: protocol, search, screening, PRISMA 2020 flow diagrams, extraction, risk of bias, and pooling with random-effects models, subgroup analysis, and meta-regression.
+Systematic review and meta-analysis for clinical and preclinical evidence: protocol, search, screening, PRISMA 2020 flow diagrams, risk of bias, pooling, small-study effects, sensitivity diagnostics, network meta-analysis, and certainty rating.
 
 ```mermaid
 graph TD
@@ -12,6 +12,8 @@ graph TD
     A --> G["Risk of bias<br>RoB 2 · ROBINS-I · robvis"]
     A --> H["Pooling<br>metafor · REML · Knapp-Hartung"]
     A --> I["Heterogeneity<br>tau² · I² · prediction interval"]
+    A --> J["Small-study effects<br>Egger · selection models"]
+    A --> K["Network MA<br>netmeta · transitivity · CINeMA"]
     style A fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
     style B fill:#1a1a2e,stroke:#4ecdc4,color:#fff,stroke-width:2px
     style C fill:#1a1a2e,stroke:#ff6b6b,color:#fff,stroke-width:2px
@@ -21,6 +23,8 @@ graph TD
     style G fill:#1a1a2e,stroke:#f39c12,color:#fff,stroke-width:2px
     style H fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
     style I fill:#1a1a2e,stroke:#1abc9c,color:#fff,stroke-width:2px
+    style J fill:#1a1a2e,stroke:#e67e22,color:#fff,stroke-width:2px
+    style K fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
 ```
 
 ## Usage
@@ -49,6 +53,13 @@ cp SKILL.md your-project/.claude/skills/meta-analysis/
 | `EE` vs `FE` | Identical numbers, different claims. EE assumes one true effect; FE restricts inference to the included studies |
 | I² | The *proportion* of variability from heterogeneity, not its amount. It rises with study size at constant tau² |
 | Subgroups | Test the QM interaction. Comparing separate subgroup p-values is not a comparison |
+| Egger's test | Needs **k ≥ 10**. Below that it cannot separate asymmetry from chance |
+| Funnel asymmetry | Means *small-study effects*, not publication bias. Heterogeneity and study quality produce the same picture |
+| Trim-and-fill | Cochrane: interpret corrected estimates "with great caution". A sensitivity analysis, not the result |
+| `pairwise()` | Lives in **meta**, not netmeta. It builds the correlation structure multi-arm trials require |
+| Transitivity | A clinical judgement made *before* fitting. Inconsistency tests are underpowered and cannot substitute |
+| SUCRA / P-scores | A treatment can rank first on one small trial. Never report a rank without its effect estimate |
+| CINeMA | A **web application**, not an R package. GRADE does not extend cleanly to networks |
 
 ## Package landscape
 
@@ -59,4 +70,7 @@ cp SKILL.md your-project/.claude/skills/meta-analysis/
 | Import and dedup | `synthesisr` 0.4.1 | maintained — replaces `revtools`, stale since 2019 |
 | Agreement | `irr` 0.85 | maintained |
 | PubMed access | `rentrez` 1.2.4 | maintained |
-| Effect sizes and models | `metafor` 5.0-1 | maintained (used in later parts) |
+| Effect sizes and models | `metafor` 5.0-1 | maintained |
+| Network meta-analysis | `netmeta` 3.6-1 | maintained |
+| Bias sensitivity | `metasens` 1.5-3 | maintained (Copas, limit meta-analysis) |
+| Bayesian NMA | `gemtc` 1.1-1 / `multinma` 0.9.1 | maintained |

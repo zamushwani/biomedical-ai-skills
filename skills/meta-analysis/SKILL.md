@@ -1,6 +1,6 @@
 # Meta-Analysis
 
-Systematic review and meta-analysis for clinical and preclinical evidence. Covers protocol registration, search strategy, deduplication, screening, PRISMA 2020 flow diagrams, data extraction, risk of bias, and pooling with fixed and random effects models, subgroup analysis, and meta-regression. Uses metafor, PRISMA2020, synthesisr, and robvis.
+Systematic review and meta-analysis for clinical and preclinical evidence. Covers protocol registration, search strategy, screening, PRISMA 2020 flow diagrams, risk of bias, pooling with fixed and random effects models, small-study effects, sensitivity diagnostics, network meta-analysis, and GRADE/CINeMA certainty rating. Uses metafor, netmeta, PRISMA2020, synthesisr, and robvis.
 
 ## When to Use This Skill
 
@@ -19,7 +19,11 @@ Activate when the user requests:
 - Heterogeneity quantification (tau^2, I^2, Q) and prediction intervals
 - Subgroup analysis and meta-regression
 - Hazard ratio reconstruction from published Kaplan-Meier curves
-- Forest plots
+- Forest and funnel plots
+- Publication bias or small-study effect assessment
+- Leave-one-out, influence, or cumulative sensitivity analysis
+- Network meta-analysis, transitivity, inconsistency, or treatment ranking
+- GRADE or CINeMA certainty rating
 
 ## Inputs
 
@@ -44,6 +48,13 @@ install.packages(c("metafor", "meta", "PRISMA2020", "robvis", "synthesisr", "irr
 #   synthesisr  0.4.1    bibliographic import and deduplication
 #   irr         0.85     Cohen's and Fleiss' kappa
 
+# Network meta-analysis and bias sensitivity
+install.packages(c("netmeta", "metasens", "gemtc", "multinma"))
+#   netmeta     3.6-1    frequentist NMA. NOTE: pairwise() is in `meta`
+#   metasens    1.5-3    Copas selection model, limit meta-analysis
+#   gemtc       1.1-1    Bayesian NMA, JAGS backend
+#   multinma    0.9.1    Bayesian NMA, Stan; aggregate + individual patient data
+
 # Programmatic search
 install.packages(c("rentrez", "easyPubMed"))
 #   rentrez     1.2.4
@@ -58,6 +69,12 @@ Packages to avoid, and why:
   metagear    0.7, last released 2021-02.
   metaviz     0.3.1, last released 2020-04. metafor and meta cover the plots.
   esc         0.5.1, last released 2019-12. Use metafor::escalc().
+  pcnetmeta   2.8, last released 2022-08.
+  nmadb       1.2.0, last released 2019-12.
+
+Not an R package at all:
+  CINeMA      web application for certainty in network meta-analysis.
+              Do not search CRAN for it.
 
 Not on CRAN, install from source if needed:
   ASySD       deduplication, higher sensitivity than reference-manager dedup
@@ -714,6 +731,249 @@ addpoly(res, row = -1, atransf = exp, mlab = "RE Model (REML, KNHA)")
 
 Fit ratio measures on the log scale and transform only for display. Pooling raw ratios is wrong: the sampling distribution is skewed and the variance formula assumes the log scale.
 
+## Publication Bias and Small-Study Effects
+
+"Publication bias" is one explanation for funnel plot asymmetry. It is not the only one, and the tests cannot distinguish between them.
+
+```
+Why a funnel plot can be asymmetric, all producing the same picture:
+
+  Publication bias      small negative studies never published
+  True heterogeneity    small studies done in higher-risk populations with
+                        genuinely larger effects
+  Poorer methods        small studies less likely to be blinded or allocation
+                        concealed, inflating their effects
+  Outcome reporting     the significant outcome reported, the others not
+  Chance                with 10 studies, asymmetry happens
+
+The Cochrane Handbook's term for this family is SMALL-STUDY EFFECTS, which is
+the honest label. Use it in the manuscript rather than asserting publication
+bias you cannot demonstrate.
+```
+
+### Funnel plot and Egger's test
+
+```r
+funnel(res, level = c(90, 95, 99), shade = c("white", "gray55", "gray75"),
+       refline = 0, legend = TRUE)
+
+regtest(res, model = "lm")   # Egger's regression test
+ranktest(res)                # Begg's rank correlation, low power
+```
+
+```
+Do not run Egger's test with fewer than 10 studies. The Cochrane Handbook is
+explicit, and running it anyway is one of the most common errors in published
+reviews: with k < 10 the test cannot distinguish asymmetry from chance.
+
+A significant Egger's test does not establish publication bias. It establishes
+asymmetry. The five causes above all produce it.
+
+Agreement between Begg's test, Egger's test and trim-and-fill is empirically
+only weak to moderate, so a "negative" result from one is not reassurance.
+
+For ratio measures use the log scale, and prefer a funnel plot against the
+standard error rather than the sample size.
+```
+
+### Trim-and-fill, and why to be careful with it
+
+```r
+tf <- trimfill(res)
+tf              # imputed studies and the "adjusted" estimate
+funnel(tf)
+```
+
+```
+Cochrane Handbook, on trim-and-fill:
+
+  it is "built on the strong assumption that there should be a symmetric
+  funnel plot", it "does not take into account reasons for funnel plot
+  asymmetry other than publication bias", and "'corrected' intervention
+  effect estimates from this method should be interpreted with great caution".
+
+Practical reading: use trim-and-fill as a SENSITIVITY ANALYSIS, to ask whether
+the conclusion survives a pessimistic scenario. Do not report the filled
+estimate as the result, and do not report the number of imputed studies as if
+it were a count of suppressed trials. It is not.
+```
+
+### Selection models, the principled alternative
+
+```r
+# Model the publication process explicitly rather than assuming symmetry
+sel <- selmodel(res, type = "step", steps = c(0.025, 0.5))
+sel
+```
+
+```r
+library(metasens)   # v1.5-3
+limitmeta(m)        # limit meta-analysis: estimate as study size -> infinity
+copas(m)            # Copas selection model, sensitivity across selection strengths
+```
+
+Selection models state their assumption about how publication depends on the p-value, which makes the assumption arguable. Trim-and-fill hides its assumption inside a symmetry requirement. Prefer the former when you have enough studies to fit it.
+
+## Sensitivity and Influence Diagnostics
+
+```r
+leave1out(res)                 # refit dropping each study in turn
+inf <- influence(res); plot(inf)   # Cook's distance, DFFITS, hat, tau^2 delete-1
+baujat(res)                    # heterogeneity contribution vs influence on the pooled effect
+cumul(res, order = year)       # cumulative meta-analysis, in time order
+```
+
+```
+What each answers:
+
+  leave1out   does any single study drive the result? Report the range of
+              pooled estimates, not just the full-data one.
+  influence   which studies are outliers AND influential. Being an outlier
+              is not enough; a small outlier changes nothing.
+  baujat      separates "inflates heterogeneity" from "moves the estimate".
+              The top-right quadrant is what to investigate.
+  cumul       shows whether the effect stabilized or is still moving. An
+              estimate that shifts with each new trial is not settled.
+
+Pre-specify sensitivity analyses. Running leave-one-out and reporting only the
+version that reaches significance is p-hacking with extra steps.
+```
+
+## Network Meta-Analysis
+
+NMA compares three or more treatments by combining direct and indirect evidence. It answers questions no single trial asked.
+
+### Transitivity, the assumption everything rests on
+
+```
+Indirect evidence for A vs C comes from A vs B and B vs C trials.
+
+That is valid ONLY if the A-vs-B and B-vs-C trials are similar enough that a
+patient in one could plausibly have been enrolled in the other. Formally:
+effect modifiers must be distributed similarly across comparisons.
+
+Check it BEFORE fitting anything, and check it with clinical data, not
+statistics: tabulate age, disease severity, line of therapy, year, and dose
+by comparison. If early trials used a lower dose of B than later ones, the
+network is not transitive and no amount of modelling repairs it.
+
+Statistical inconsistency tests have low power. A non-significant
+inconsistency test is not evidence of transitivity.
+```
+
+### Fitting
+
+```r
+library(netmeta)   # v3.6-1
+library(meta)      # pairwise() lives HERE, not in netmeta
+
+# Long arm-based data -> contrast-based pairwise comparisons,
+# with correlated multi-arm trials handled correctly
+p <- pairwise(treat = treatment, event = events, n = total,
+              studlab = study, data = dat, sm = "OR")
+
+net <- netmeta(p, common = FALSE, random = TRUE,
+               reference.group = "placebo",
+               small.values = "desirable",   # do lower values mean benefit?
+               prediction = TRUE)
+summary(net)
+```
+
+```
+Multi-arm trials are the trap. A three-arm trial contributes three pairwise
+comparisons that are CORRELATED, because they share an arm. Feeding those in
+as if independent double-counts patients and understates the standard error.
+
+pairwise() constructs the correct correlation structure. Building the
+comparison table by hand in a spreadsheet does not.
+```
+
+### Network geometry
+
+```r
+netgraph(net, plastic = FALSE, thickness = "number.of.studies",
+         number.of.studies = TRUE)
+```
+
+Look at it before interpreting anything. A comparison supported by one small trial can sit between two well-studied nodes and carry the entire indirect estimate.
+
+### Inconsistency
+
+```r
+netsplit(net)        # direct vs indirect per comparison, with a p-value
+decomp.design(net)   # design-by-treatment interaction, the global test
+netheat(net)         # which designs contribute the inconsistency
+```
+
+```
+netsplit is local: it asks whether direct and indirect disagree for each
+comparison. decomp.design is global.
+
+Both are underpowered. Report them, and treat a disagreement as a reason to
+re-examine transitivity rather than as a number to correct.
+
+If direct and indirect genuinely conflict, the network estimate is a weighted
+average of two incompatible things. Do not report it as if the conflict were
+resolved.
+```
+
+### Ranking, and its limits
+
+```r
+netrank(net, small.values = "desirable")   # P-scores, frequentist analogue of SUCRA
+```
+
+```
+P-scores and SUCRA are the most over-interpreted output in the whole field.
+
+  A treatment can rank first on a single small trial. The ranking metric does
+  not encode uncertainty in a way readers perceive.
+
+  Rankings are unstable: adding one study can reorder the top three.
+
+  "Ranked first" is not "better than second". Report the effect estimates with
+  confidence intervals alongside any ranking, and never report a league table
+  of ranks without them.
+
+Report certainty too. A first-ranked treatment supported by very-low-certainty
+evidence should be described that way.
+```
+
+### Bayesian NMA
+
+```r
+library(gemtc)     # v1.1-1, JAGS backend
+# mtc.network() -> mtc.model() -> mtc.run(), then gelman.diag() for convergence
+
+library(multinma)  # v0.9.1, Stan backend; supports individual patient data
+```
+
+Use Bayesian NMA when you need full posterior distributions, want to incorporate prior information on heterogeneity, or need to combine aggregate and individual patient data. Check convergence (R-hat, trace plots) before reading any estimate.
+
+## Certainty of Evidence
+
+```
+Pairwise meta-analysis -> GRADE
+  Start high for RCTs, low for observational studies, then rate down for:
+    risk of bias, inconsistency, indirectness, imprecision, publication bias
+  and up (observational only) for:
+    large effect, dose-response, plausible confounding working against the effect
+
+  Produce a Summary of Findings table. GRADEpro is the standard tool.
+
+Network meta-analysis -> CINeMA
+  GRADE does not extend cleanly to networks, because each estimate mixes
+  direct and indirect evidence in different proportions. CINeMA
+  (Confidence In Network Meta-Analysis) handles this across six domains:
+  within-study bias, reporting bias, indirectness, imprecision, heterogeneity,
+  and incoherence.
+
+  CINeMA is a WEB APPLICATION, not an R package. Do not look for it on CRAN.
+  netmeta can export the data it needs.
+```
+
+Certainty is assessed per outcome and per comparison, not once for the review. A review with high certainty for the primary outcome and very low certainty for harms must say so.
+
 ## Output Specification
 
 | Output | Format | Description |
@@ -735,6 +995,15 @@ Fit ratio measures on the log scale and transform only for display. Pooling raw 
 | `metaregression.txt` | Text | Coefficients, omnibus test, R^2 |
 | `forest_plot.pdf` | PDF | Forest plot on the analysis scale, transformed for display |
 | `sessionInfo.txt` | Text | Package versions. metafor 4.x and 5.x give different ROM/CVR results |
+| `funnel_plot.pdf` | PDF | Contour-enhanced funnel plot, with k reported |
+| `bias_tests.txt` | Text | Egger's regression and rank test, with k and the k >= 10 check |
+| `sensitivity.csv` | CSV | Leave-one-out estimates, influence diagnostics, cumulative analysis |
+| `netgraph.pdf` | PDF | Network geometry with edge thickness by number of studies |
+| `nma_results.csv` | CSV | League table of pairwise estimates with confidence intervals |
+| `netsplit.csv` | CSV | Direct vs indirect per comparison, with the inconsistency p-value |
+| `netrank.csv` | CSV | P-scores, reported alongside effect estimates and certainty |
+| `transitivity_table.csv` | CSV | Effect modifiers tabulated by comparison, the pre-fit check |
+| `certainty.csv` | CSV | GRADE (pairwise) or CINeMA (network) rating per outcome per comparison |
 
 ## Validation Checks
 
@@ -792,6 +1061,30 @@ Subgroups and meta-regression
   At least 10 studies per moderator, and the count reported.
   Number of subgroup analyses run is reported, including the ones that
   produced nothing.
+
+Publication bias
+  k >= 10 before any asymmetry test is run, and k stated next to the result.
+  Findings described as "small-study effects", not asserted as publication bias.
+  Trim-and-fill reported as a sensitivity analysis, never as the headline estimate.
+
+Sensitivity
+  Leave-one-out range reported, not just the full-data estimate.
+  Sensitivity analyses were pre-specified, and all of them are reported.
+
+Network meta-analysis
+  Transitivity assessed with a table of effect modifiers by comparison,
+  BEFORE the model was fitted.
+  pairwise() used to build comparisons, so multi-arm trials are correlated
+  correctly. Patients are not double-counted.
+  Network plot inspected: no comparison carrying the network on one small trial.
+  netsplit and decomp.design both reported, with their low power acknowledged.
+  Rankings never reported without effect estimates, confidence intervals and
+  certainty alongside.
+  Bayesian fits: convergence checked (R-hat, trace plots) before interpretation.
+
+Certainty
+  Rated per outcome and per comparison, not once for the whole review.
+  GRADE for pairwise, CINeMA for networks.
 ```
 
 ## Common Pitfalls
@@ -830,6 +1123,21 @@ Subgroups and meta-regression
 25. **Pooling ratio measures on the raw scale**: odds ratios, risk ratios and hazard ratios are pooled on the log scale, where the sampling distribution is approximately normal, and back-transformed only for display.
 26. **Relying on the 0.5 continuity correction for rare events**: it biases estimates toward the null, and worse as arms become more unbalanced. Use Peto OR for rare balanced events, or a model that handles zeros directly.
 
+### Publication bias and sensitivity
+27. **Running Egger's test with fewer than 10 studies**: the Cochrane Handbook says not to, and it remains one of the most common errors in published reviews. Below k = 10 the test cannot separate asymmetry from chance.
+28. **Reporting funnel plot asymmetry as publication bias**: asymmetry is equally consistent with genuine heterogeneity, worse methods in small studies, selective outcome reporting, or chance. The defensible term is "small-study effects".
+29. **Presenting the trim-and-fill estimate as the result**: it assumes the funnel should be symmetric and ignores every other cause of asymmetry. Cochrane says to interpret its corrected estimates "with great caution". Use it as a sensitivity analysis.
+30. **Treating the number of imputed studies as a count of suppressed trials**: they are a mathematical construction that restores symmetry, not evidence that those trials exist.
+31. **Reporting leave-one-out only when it helps**: dropping the one study that removes significance, and reporting that version, is p-hacking. Pre-specify sensitivity analyses and report all of them.
+
+### Network meta-analysis
+32. **Fitting an NMA without assessing transitivity**: indirect comparison is only valid when effect modifiers are distributed similarly across comparisons. That is a clinical judgement made from a table of study characteristics, before modelling, and no statistical test substitutes for it.
+33. **Reading a non-significant inconsistency test as evidence of consistency**: `netsplit` and `decomp.design` are both underpowered. Absence of detected inconsistency is not evidence of transitivity.
+34. **Building the comparison table by hand**: multi-arm trials produce correlated comparisons that share an arm. Entering them as independent double-counts patients and understates standard errors. Use `pairwise()` from **meta**, which is where it lives, not netmeta.
+35. **Reporting SUCRA or P-score rankings without effect estimates**: a treatment can rank first on one small trial, and rankings reorder when a single study is added. Always report the estimate, its interval, and the certainty next to the rank.
+36. **Applying GRADE directly to network estimates**: each network estimate blends direct and indirect evidence in different proportions, which GRADE does not handle. Use CINeMA, and note it is a web application rather than an R package.
+37. **Rating certainty once for the whole review**: certainty is per outcome and per comparison. High certainty for the primary outcome says nothing about the harms.
+
 ## Related Skills
 
 - [`survival-analysis`](../survival-analysis/SKILL.md): interpreting the hazard ratios and Kaplan-Meier curves that time-to-event meta-analyses pool
@@ -848,5 +1156,9 @@ Subgroups and meta-regression
 | `data_robins_e` | `robvis` | ROBINS-E example |
 | `data_quadas` / `data_quips` | `robvis` | QUADAS-2 and QUIPS examples |
 | `PRISMA.csv` | `PRISMA2020` | Template flow diagram counts, correct field names |
+| `Senn2013` | `netmeta` | 26 diabetes trials, 10 treatments — the standard NMA teaching network |
+| `Woods2010` | `netmeta` | COPD, binary outcome, includes multi-arm trials |
+| `Linde2015` | `netmeta` | Depression, larger network with sparse comparisons |
+| `dat.hasselblad1998` | `metadat` | Smoking cessation, the classic Bayesian NMA example |
 
 Load the template with `system.file("extdata", "PRISMA.csv", package = "PRISMA2020")` rather than transcribing the field names, which is where most flow-diagram errors start.
