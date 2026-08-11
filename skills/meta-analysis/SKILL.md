@@ -1,6 +1,6 @@
 # Meta-Analysis
 
-Systematic review and meta-analysis for clinical and preclinical evidence. This part covers protocol registration, search strategy construction, deduplication, screening, PRISMA 2020 flow diagrams, data extraction, and risk of bias assessment using the PRISMA2020, synthesisr, and robvis packages.
+Systematic review and meta-analysis for clinical and preclinical evidence. Covers protocol registration, search strategy, deduplication, screening, PRISMA 2020 flow diagrams, data extraction, risk of bias, and pooling with fixed and random effects models, subgroup analysis, and meta-regression. Uses metafor, PRISMA2020, synthesisr, and robvis.
 
 ## When to Use This Skill
 
@@ -14,6 +14,12 @@ Activate when the user requests:
 - Risk of bias assessment (RoB 2, ROBINS-I, ROBINS-E, QUADAS-2, Newcastle-Ottawa)
 - Risk of bias visualization (traffic light or summary plots)
 - Data extraction templates for RCTs or observational studies
+- Effect size computation (OR, RR, RD, SMD, MD, ROM, HR)
+- Pooling with equal-effects or random-effects models
+- Heterogeneity quantification (tau^2, I^2, Q) and prediction intervals
+- Subgroup analysis and meta-regression
+- Hazard ratio reconstruction from published Kaplan-Meier curves
+- Forest plots
 
 ## Inputs
 
@@ -442,6 +448,272 @@ implementations. Use the R package rather than the hosted app.
 
 Risk of bias feeds the synthesis. Studies at high risk are not silently dropped: they are either excluded in a pre-specified sensitivity analysis, or retained with the sensitivity analysis reported alongside.
 
+## Effect Measures
+
+Choose the measure before extraction, because it determines what has to be extracted.
+
+```
+Binary outcome
+  OR   odds ratio. Symmetric, works with case-control, but is misread as a
+       risk ratio whenever the event is common (> ~10%).
+  RR   risk ratio. Interpretable, preferred for cohort and trial data.
+       Not estimable from case-control designs.
+  RD   risk difference. Absolute scale, so it transports poorly across
+       populations with different baseline risk. Usually more heterogeneous.
+  PETO one-step OR. Only for rare events with balanced arms. Biased when
+       arms are unbalanced or effects are large.
+
+Continuous outcome
+  MD   mean difference. Use when every study measured the SAME instrument
+       on the same scale.
+  SMD  standardised mean difference (Hedges' g in metafor). Use when studies
+       used DIFFERENT instruments for the same construct.
+  ROM  ratio of means. Use for ratio-scale outcomes where a proportional
+       change is more natural than an absolute one.
+
+Time-to-event
+  HR   hazard ratio, pooled on the log scale.
+```
+
+Pick one and keep it. Switching measure after seeing the pooled result is a form of analytic flexibility that inflates false positives.
+
+## Computing Effect Sizes
+
+`escalc()` computes the effect size `yi` and its sampling variance `vi`, which is what every model consumes.
+
+```r
+library(metafor)   # v5.0-1
+data(dat.bcg, package = "metadat")
+
+# Binary: 2x2 table per study
+dat <- escalc(measure = "RR", data = dat.bcg,
+              ai = tpos, bi = tneg,     # events / non-events, treatment
+              ci = cpos, di = cneg)     # events / non-events, control
+
+# Continuous
+# escalc(measure = "SMD", m1i =, sd1i =, n1i =, m2i =, sd2i =, n2i =, data = )
+
+# Time-to-event: supply log(HR) and its standard error directly
+# dat$yi <- log(dat$hr);  dat$vi <- ((log(dat$hr_upper) - log(dat$hr_lower)) / 3.92)^2
+```
+
+```
+metafor 5.0 changed two escalc() defaults. Code written for 4.x runs without
+error and returns DIFFERENT numbers.
+
+  correct = TRUE is now the default for "ROM", "ROMC", "CVR" and "CVRC".
+  The second-order Taylor bias correction is applied unless you pass
+  correct = FALSE. Any ROM or CVR meta-analysis run on 4.x will not reproduce
+  on 5.x at the default.
+
+  The default `add` value changed to 0 for eight measures where bias
+  corrections are now applied.
+
+  pi.type was renamed predtype. The old name still works but is deprecated.
+
+If you are reproducing a published analysis, pin the metafor version and say
+which one you used.
+```
+
+### Zero cells
+
+```r
+# add = 1/2, to = "only0" is the default: add 0.5 only to studies with a zero cell
+dat <- escalc(measure = "OR", ai = ai, bi = bi, ci = ci, di = di, data = dat)
+
+# Double-zero studies contribute nothing and are dropped by default
+# drop00 = TRUE removes them explicitly
+```
+
+```
+The 0.5 continuity correction is a convenience, not a solution. It biases the
+estimate toward the null and the bias grows as arms become unbalanced.
+
+For rare events, prefer a method that does not need it:
+  - Peto OR, when events are rare AND arms are roughly balanced
+  - a beta-binomial or exact model via rma.glmm()
+
+Never "fix" zero cells by deleting the studies. That is informative deletion.
+```
+
+## Fitting the Model
+
+### The terminology trap
+
+```r
+rma(yi, vi, data = dat, method = "EE")   # equal-effects
+rma(yi, vi, data = dat, method = "FE")   # fixed-effects
+```
+
+```
+"EE" and "FE" produce IDENTICAL numbers and mean different things.
+
+  EE (equal-effects)  assumes one single true effect underlies every study.
+                      Differences between studies are sampling error only.
+                      This is what most people mean when they write
+                      "fixed-effect meta-analysis".
+
+  FE (fixed-effects)  makes no such assumption. Inference is conditional on
+                      the studies actually included: it estimates the average
+                      effect IN THIS SET, and does not generalize beyond it.
+
+Older metafor used "FE" for what is now "EE". Papers saying "fixed effect"
+almost always mean EE. State which model you fitted and what you claim from it.
+```
+
+### Random-effects, the default
+
+```r
+res <- rma(yi, vi, data = dat,
+           method = "REML",   # tau^2 estimator; the default
+           test = "knha")     # Knapp-Hartung; NOT the default, must be asked for
+summary(res)
+```
+
+```
+Two choices carry most of the weight.
+
+tau^2 estimator: REML
+  metafor's default and its author's recommendation, because REML gives
+  approximately unbiased estimates of heterogeneity. DerSimonian-Laird is
+  the historical default in older software and underestimates tau^2, which
+  makes confidence intervals too narrow. Use REML unless reproducing an
+  older analysis, and then say so.
+  Available: "REML", "ML", "DL", "PM", "EB", "SJ", "HS", "HSk", "HE", "GENQ".
+
+Knapp-Hartung: test = "knha"
+  Default is test = "z", which uses a normal distribution and produces
+  intervals that are too narrow when the number of studies is small.
+  test = "knha" uses a t-distribution with k - p degrees of freedom.
+  metafor's author calls it "highly recommended".
+
+  Honest caveat: simulation work (IntHout 2014, Jackson 2017) shows coverage
+  is slightly BELOW nominal when heterogeneity is low (I^2 < 30%) and study
+  sizes are very uneven. It still beats DerSimonian-Laird across most of the
+  parameter space. Report that you used it.
+```
+
+## Heterogeneity
+
+```r
+res                  # prints Q, its p-value, tau^2, I^2, H^2
+confint(res)         # confidence interval for tau^2 and I^2 — report it
+predict(res, digits = 3)   # pooled estimate with a PREDICTION interval
+```
+
+```
+What each quantity actually tells you:
+
+  Q       a test of whether heterogeneity exceeds sampling error. Badly
+          underpowered with few studies, and trivially significant with many.
+          A non-significant Q does NOT establish homogeneity.
+
+  tau^2   the variance of true effects, on the analysis scale. The only one
+          of these that is a magnitude rather than a proportion.
+
+  I^2     the PERCENTAGE OF VARIABILITY due to heterogeneity rather than
+          chance. It is NOT the amount of heterogeneity. I^2 rises as studies
+          get larger even when tau^2 is unchanged, because sampling error
+          shrinks. Two meta-analyses with identical tau^2 can have I^2 of 25%
+          and 90%.
+
+  The 25/50/75% "low/moderate/high" thresholds are explicitly described in the
+  Cochrane Handbook as rough and context-dependent. Do not treat them as rules.
+
+Prediction interval
+  The confidence interval describes the AVERAGE effect. The prediction
+  interval describes where the effect of a NEW study would fall. With
+  substantial tau^2 the prediction interval routinely crosses the null while
+  the confidence interval does not. Report both, or the review overstates
+  what is known.
+```
+
+## Subgroup Analysis
+
+```r
+# Subgroups are a moderator, not separate meta-analyses
+res_sub <- rma(yi, vi, mods = ~ factor(alloc), data = dat, test = "knha")
+res_sub          # QM = omnibus test of the moderator; this is the test that matters
+
+# Pooled estimate within each level, with a shared tau^2
+predict(res_sub, newmods = rbind(c(0,0), c(1,0), c(0,1)))
+```
+
+```
+The mistake that shows up in most published subgroup analyses:
+
+  Running a separate meta-analysis in each subgroup and comparing whether one
+  is significant and the other is not. That is not a comparison. A subgroup
+  can be significant purely because it has more studies.
+
+  The correct question is whether the SUBGROUP DIFFERENCE is non-zero, which
+  is the QM test above.
+
+Subgroup analyses are observational even in a review of randomized trials.
+Studies were not randomized to subgroups, so a subgroup difference is a
+hypothesis, not an effect. Pre-specify them, keep them few, and report how
+many you ran.
+```
+
+## Meta-Regression
+
+```r
+res_mr <- rma(yi, vi, mods = ~ ablat + year, data = dat, test = "knha")
+res_mr
+# R^2 in the output = proportion of tau^2 explained by the moderators
+
+regplot(res_mr, mod = "ablat", xlab = "Absolute latitude", las = 1)
+```
+
+```
+Power rule of thumb: at least 10 studies per moderator, and that is a floor,
+not a target. Meta-regression on 8 studies with 2 moderators is curve-fitting.
+
+Aggregation bias: a study-level covariate is not a patient-level covariate.
+A relationship between mean age and effect size across studies does not imply
+the same relationship across patients. This is ecological inference, and it
+is the single most over-claimed result in meta-regression.
+```
+
+## Hazard Ratios from Published Curves
+
+When a trial reports a Kaplan-Meier curve but no hazard ratio, the HR can be reconstructed.
+
+```
+Preferred order:
+
+  1. HR and CI reported directly            use them
+  2. Reconstruct from reported statistics   Parmar/Tierney methods, using
+                                            O-E and variance, or the log-rank
+                                            p-value with events per arm
+  3. Digitize the KM curve                  Guyot algorithm reconstructs
+                                            individual patient data from the
+                                            curve plus numbers at risk
+
+Digitizing is a last resort. It requires the numbers-at-risk table to be
+printed; without it the reconstruction is unreliable. The R implementation
+(IPDfromKM) was last released in 2020, so validate its output against any
+reported median survival before pooling.
+
+Whatever you use, record the method per study and run a sensitivity analysis
+excluding reconstructed estimates.
+```
+
+## Forest Plots
+
+```r
+forest(res,
+       slab = paste(dat$author, dat$year, sep = ", "),
+       atransf = exp,               # display on the ratio scale, model fitted on log
+       at = log(c(0.05, 0.25, 1, 4)),
+       xlab = "Risk Ratio (log scale)",
+       header = "Author(s) and Year",
+       mlab = "")
+addpoly(res, row = -1, atransf = exp, mlab = "RE Model (REML, KNHA)")
+```
+
+Fit ratio measures on the log scale and transform only for display. Pooling raw ratios is wrong: the sampling distribution is skewed and the variance formula assumes the log scale.
+
 ## Output Specification
 
 | Output | Format | Description |
@@ -457,6 +729,12 @@ Risk of bias feeds the synthesis. Studies at high risk are not silently dropped:
 | `rob_assessments.csv` | CSV | Study, per-domain judgements, overall |
 | `rob_traffic_light.pdf` | PDF | Per-study per-domain risk of bias |
 | `rob_summary.pdf` | PDF | Stacked bar of judgements per domain |
+| `effect_sizes.csv` | CSV | Per-study `yi` and `vi` from `escalc()`, plus the measure used |
+| `model_results.txt` | Text | `rma()` output: estimate, CI, prediction interval, tau^2, I^2, Q |
+| `subgroup_results.csv` | CSV | Per-subgroup estimates and the QM test of the difference |
+| `metaregression.txt` | Text | Coefficients, omnibus test, R^2 |
+| `forest_plot.pdf` | PDF | Forest plot on the analysis scale, transformed for display |
+| `sessionInfo.txt` | Text | Package versions. metafor 4.x and 5.x give different ROM/CVR results |
 
 ## Validation Checks
 
@@ -490,6 +768,30 @@ Risk of bias
   drops rows.
   Overall judgement equals the worst domain, never an average.
   Two assessors, with disagreements recorded and reconciled.
+
+Effect sizes
+  yi and vi exist for every included study; no NA passed silently into rma().
+  Ratio measures are on the log scale in yi, exponentiated only for display.
+  Direction is consistent: a value below 0 (log scale) means the same thing
+  in every study. Flipped arms are the most common extraction error.
+  Sanity-check 2-3 studies by hand against the paper's reported effect.
+
+Model
+  method and test are stated explicitly, not left implicit.
+  tau^2 reported with a confidence interval, not just a point estimate.
+  Prediction interval reported alongside the confidence interval.
+  k (number of studies) matches the PRISMA included count.
+
+  Reproducibility: record metafor's version. Bias correction defaults for
+  ROM, ROMC, CVR and CVRC changed in 5.0, so the same code gives different
+  numbers across that boundary.
+
+Subgroups and meta-regression
+  Subgroup claims rest on the QM test of the difference, not on comparing
+  which subgroup reached significance.
+  At least 10 studies per moderator, and the count reported.
+  Number of subgroup analyses run is reported, including the ones that
+  produced nothing.
 ```
 
 ## Common Pitfalls
@@ -515,6 +817,18 @@ Risk of bias
 14. **Averaging domain judgements**: the overall judgement is the worst domain, not a mean. Averaging turns one critical flaw into a moderate score.
 15. **Scoring instead of judging with the Newcastle-Ottawa Scale**: a numeric star score implies domains are interchangeable and that a threshold separates good from bad studies. Report domain-level judgements, and pair NOS with ROBINS-I when a journal insists on it.
 16. **Excluding high-risk studies without pre-specification**: deciding to drop studies after seeing that they change the result is a post-hoc choice. Pre-specify it as a sensitivity analysis, and report both the full and restricted syntheses.
+
+### Effect estimation
+17. **Assuming metafor 4.x code reproduces on 5.x**: bias corrections for `ROM`, `ROMC`, `CVR` and `CVRC` became the `escalc()` default in 5.0, and the default `add` changed for eight measures. The code runs without error and returns different numbers. Record the version, and pass `correct = FALSE` if you are reproducing an older analysis.
+18. **Leaving `test = "z"` on a random-effects model**: the default gives normal-based intervals that are too narrow with few studies. `test = "knha"` uses a t-distribution and is the maintainer's own recommendation. It is not the default, so it has to be requested.
+19. **Using DerSimonian-Laird because it is familiar**: it underestimates tau^2, which narrows every downstream interval. REML is metafor's default and the current recommendation. If you use DL to match an older analysis, say so.
+20. **Confusing `method = "EE"` with `method = "FE"`**: they produce identical numbers and support different claims. EE assumes one true effect; FE restricts inference to the included studies only. Most papers writing "fixed effect" mean EE.
+21. **Reading I² as the amount of heterogeneity**: it is the proportion of variability attributable to heterogeneity, and it increases with study size at constant tau². Report tau² with its confidence interval for magnitude, and treat the 25/50/75% bands as the rough guide the Cochrane Handbook says they are.
+22. **Reporting only the confidence interval**: it describes the average effect. With real heterogeneity the prediction interval, which describes the next study, often crosses the null when the confidence interval does not. Omitting it overstates certainty.
+23. **Comparing subgroups by their separate p-values**: significance in one subgroup and not another is not evidence of a difference; the subgroup with more studies simply has more power. Test the interaction with the QM statistic.
+24. **Meta-regression with too few studies**: fewer than about 10 studies per moderator is curve-fitting. And a study-level covariate is not a patient-level one, so a moderator relationship across studies does not transfer to patients.
+25. **Pooling ratio measures on the raw scale**: odds ratios, risk ratios and hazard ratios are pooled on the log scale, where the sampling distribution is approximately normal, and back-transformed only for display.
+26. **Relying on the 0.5 continuity correction for rare events**: it biases estimates toward the null, and worse as arms become more unbalanced. Use Peto OR for rare balanced events, or a model that handles zeros directly.
 
 ## Related Skills
 

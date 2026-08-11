@@ -1,6 +1,6 @@
 # meta-analysis
 
-Systematic review and meta-analysis for clinical and preclinical evidence. This part covers everything up to synthesis: protocol, search, screening, PRISMA 2020 flow diagrams, extraction, and risk of bias.
+Systematic review and meta-analysis for clinical and preclinical evidence: protocol, search, screening, PRISMA 2020 flow diagrams, extraction, risk of bias, and pooling with random-effects models, subgroup analysis, and meta-regression.
 
 ```mermaid
 graph TD
@@ -10,6 +10,8 @@ graph TD
     A --> E["Screening<br>two reviewers · kappa"]
     A --> F["PRISMA 2020<br>flow diagram"]
     A --> G["Risk of bias<br>RoB 2 · ROBINS-I · robvis"]
+    A --> H["Pooling<br>metafor · REML · Knapp-Hartung"]
+    A --> I["Heterogeneity<br>tau² · I² · prediction interval"]
     style A fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
     style B fill:#1a1a2e,stroke:#4ecdc4,color:#fff,stroke-width:2px
     style C fill:#1a1a2e,stroke:#ff6b6b,color:#fff,stroke-width:2px
@@ -17,6 +19,8 @@ graph TD
     style E fill:#1a1a2e,stroke:#276DC3,color:#fff,stroke-width:2px
     style F fill:#1a1a2e,stroke:#e84d3c,color:#fff,stroke-width:2px
     style G fill:#1a1a2e,stroke:#f39c12,color:#fff,stroke-width:2px
+    style H fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
+    style I fill:#1a1a2e,stroke:#1abc9c,color:#fff,stroke-width:2px
 ```
 
 ## Usage
@@ -40,6 +44,11 @@ cp SKILL.md your-project/.claude/skills/meta-analysis/
 | ROBINS-I version | V2 was posted 2025-11-20 but is still a **draft** and subject to change. Use the 2016 version for publication |
 | Overall RoB judgement | The worst domain, never an average |
 | Newcastle-Ottawa | Produces a score, and Cochrane advises against scoring. Pair with ROBINS-I rather than replacing it |
+| metafor 4.x → 5.x | Bias correction became the `escalc()` default for `ROM`/`CVR`. Old code runs fine and returns **different numbers** |
+| Knapp-Hartung | `test = "knha"` is **not** the default. Without it, intervals are too narrow with few studies |
+| `EE` vs `FE` | Identical numbers, different claims. EE assumes one true effect; FE restricts inference to the included studies |
+| I² | The *proportion* of variability from heterogeneity, not its amount. It rises with study size at constant tau² |
+| Subgroups | Test the QM interaction. Comparing separate subgroup p-values is not a comparison |
 
 ## Package landscape
 
