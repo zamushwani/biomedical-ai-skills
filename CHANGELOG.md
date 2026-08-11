@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-08-11
+
 ### Added
 - meta-analysis skill (effect estimation): effect measure selection, `escalc()` for binary, continuous and time-to-event outcomes, equal-effects vs fixed-effects vs random-effects models, tau^2 estimator choice, the Knapp-Hartung adjustment, heterogeneity quantification with prediction intervals, subgroup analysis via the omnibus moderator test, meta-regression, hazard ratio reconstruction from published Kaplan-Meier curves, and forest plots
 - Documented the metafor 5.0 default changes that silently alter results relative to 4.x: bias correction now applied by default for `ROM`, `ROMC`, `CVR` and `CVRC`, and a changed default `add` for eight measures
@@ -62,7 +64,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.0...v0.2.1
