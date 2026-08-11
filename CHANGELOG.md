@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- meta-analysis skill (Part 1 — study selection): PROSPERO pre-specification, PICO search construction with MeSH/Emtree syntax and the Cochrane Highly Sensitive Search Strategy, programmatic PubMed retrieval via rentrez, deduplication with synthesisr, two-reviewer screening with Cohen's and Fleiss' kappa, PRISMA 2020 flow diagrams with the arithmetic that has to reconcile, data extraction templates and median-to-mean conversions, risk of bias tool selection (RoB 2, ROBINS-I, ROBINS-E, QUADAS-2, QUIPS, ROB ME, Newcastle-Ottawa) and robvis visualization
+
+Not yet in the pip package: the skill ships to PyPI once the remaining parts and its validation tests are done.
+
 ## [0.2.2] - 2026-08-10
 
 ### Fixed
