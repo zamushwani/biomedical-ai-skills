@@ -61,6 +61,24 @@ cp SKILL.md your-project/.claude/skills/meta-analysis/
 | SUCRA / P-scores | A treatment can rank first on one small trial. Never report a rank without its effect estimate |
 | CINeMA | A **web application**, not an R package. GRADE does not extend cleanly to networks |
 
+## Validation
+
+Tests in [`tests/`](tests/) run against `metadat` and `netmeta` shipped datasets. Nothing is downloaded, so the suite finishes in under a minute offline.
+
+**Executed 2026-08-12: 81 assertions, 0 failures** (R 4.5.1, metafor 4.8.0, netmeta 3.2.0).
+
+```bash
+Rscript tests/run_all.R
+```
+
+Three things the suite demonstrates rather than asserts:
+
+- `method="EE"` and `method="FE"` return **identical** numbers, to 1e-12
+- The prediction interval (−1.87, 0.44) **crosses zero** while the CI (−1.07, −0.36) does not
+- Dividing every sampling variance by 4 raises I² from 92.2% to 98.4% at unchanged tau², because I² is a proportion of variability rather than an amount of heterogeneity
+
+It also detects the metafor 4.x/5.x boundary directly: on 4.x, `escalc(measure="ROM", correct=)` makes no difference; from 5.0 it does.
+
 ## Package landscape
 
 | Use | Package | Status |

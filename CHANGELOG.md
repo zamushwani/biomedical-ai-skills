@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-08-12
+
+### Added
+- meta-analysis validation tests: 81 assertions across four R scripts, executed on 2026-08-12 with 0 failures. Runs offline against `metadat` and `netmeta` shipped datasets. Verifies pooled estimates against a hand-computed log risk ratio, demonstrates that `method="EE"` and `method="FE"` are numerically identical, shows the prediction interval crossing zero while the confidence interval does not, shows I^2 rising from 92.2% to 98.4% at unchanged tau^2 when precision increases, confirms trim-and-fill attenuates toward the null, and checks multi-arm correlation handling in a network via degrees of freedom (18, not k-1 = 25)
+- The test suite detects the metafor 4.x/5.x boundary directly: on 4.x `escalc(measure="ROM", correct=)` has no effect, and from 5.0 the bias correction is applied by default
+
 ## [0.2.4] - 2026-08-11
 
 ### Added
@@ -64,7 +70,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.1...v0.2.2
