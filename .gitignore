@@ -62,3 +62,6 @@ mcp-servers/
 scripts/
 mnt/
 drafts/
+
+# R plot artifacts from running test suites
+Rplots.pdf
