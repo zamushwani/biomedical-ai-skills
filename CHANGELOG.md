@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-08-15
+
+### Added
+- foundation-models validation tests: 32 assertions across three Python scripts, executed on 2026-08-15 with 0 failures. Establishes the HVG+PCA baseline on PBMC 3k (ARI 0.879, NMI 0.861 at 30 PCs) that a zero-shot embedding has to clear, and shows HVG selection alone is worth 0.332 ARI. Reimplements Geneformer's rank-value encoding to show that log-normalized input changes the token order for 100% of cells with a mean Spearman of 0.008. Confirms that passing Ensembl IDs to a symbol vocabulary matches 0 of 32,738 genes while the model still returns embeddings. Model weights are optional, so the head-to-head comparison skips when absent
+- Every skill in the repository now has a validation suite
+
 ## [0.2.5] - 2026-08-12
 
 ### Added
@@ -70,7 +76,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.2...v0.2.3
