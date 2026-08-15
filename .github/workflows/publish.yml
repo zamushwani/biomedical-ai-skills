@@ -37,6 +37,7 @@ jobs:
               "spatial-transcriptomics",
               "foundation-models",
               "meta-analysis",
+              "variant-annotation",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {

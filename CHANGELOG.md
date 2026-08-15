@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-15
+
+### Added
+- variant-annotation skill: VCF normalization and filtering with bcftools, functional annotation with Ensembl VEP 116.1 including transcript-selection semantics, germline classification under ACMG/AMP 2015 with ClinGen's criterion-level refinements, somatic oncogenicity under the ClinGen/CGC/VICC 2022 SOP, somatic clinical significance under the AMP/ASCO/CAP 2017 tiers, OncoKB and CIViC lookup, tumour mutational burden with its assay-dependence, microsatellite instability, and neoantigen prediction with pVACtools
+- Documents that germline pathogenicity, somatic oncogenicity and somatic clinical significance are three separate frameworks on two different axes, and that ClinGen's guidance is to apply both somatic frameworks rather than choose between them
+
 ## [0.2.6] - 2026-08-15
 
 ### Added
@@ -76,7 +82,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.3...v0.2.4
