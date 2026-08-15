@@ -57,6 +57,25 @@ Oncogenicity and clinical significance are **different axes**. KRAS G12D is unam
 | `msisensor` | The original ding-lab repository is **archived**. Use msisensor-pro or msisensor2 |
 | Binding vs immunogenicity | Most predicted binders provoke no T cell response. Filter on expression and treat output as hypotheses |
 
+## Validation
+
+Tests in [`tests/`](tests/) run against data shipped with `VariantAnnotation` and `maftools`. Nothing is downloaded, and bcftools/VEP are not required.
+
+**Executed 2026-08-15: 62 assertions, 0 failures** (R 4.5.1, VariantAnnotation 1.56.0, maftools 2.26.0).
+
+```bash
+Rscript tests/run_all.R
+```
+
+Four things the suite demonstrates rather than asserts:
+
+- The shipped VCF uses seqlevel `22` and overlaps UCSC-style names in **zero contigs** — the mismatch that returns no annotations instead of an error
+- Splitting 40 multiallelic records raises the count from 1,011 to 1,072, by exactly the number of extra alleles
+- Including synonymous variants inflates the TMB numerator by **27.4%**, and `captureSize` scales TMB *exactly* linearly
+- The same 3,181 cancer hotspots share **no coordinates** between GRCh37 and GRCh38
+
+It also caught a sample-loss behaviour worth knowing: `maftools::tmb()` returns 192 rows for a 193-sample cohort, because one sample has only synonymous variants. Its true TMB is 0, not NA.
+
 ## Tool landscape
 
 | Use | Tool | Status (2026-08) |

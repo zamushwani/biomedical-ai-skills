@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-15
+
+### Added
+- variant-annotation validation tests: 62 assertions across three R scripts, executed on 2026-08-15 with 0 failures. Runs offline against data shipped with VariantAnnotation and maftools, with no bcftools or VEP dependency. Encodes the framework rules (ACMG/AMP has no somatic application; tier assignment requires a tumour type; truncating variants are strong evidence only in tumour suppressors), reimplements minimal-representation trimming and checks idempotence, shows multiallelic splitting raises the record count by exactly the number of extra alleles, and demonstrates that synonymous inclusion inflates TMB by 27.4% while captureSize scales it exactly linearly
+- The suite documents that `maftools::tmb()` silently omits samples with zero non-synonymous variants, whose true TMB is 0 rather than missing, and that the same 3,181 cancer hotspots share no coordinates between GRCh37 and GRCh38
+
 ## [0.3.0] - 2026-08-15
 
 ### Added
@@ -82,7 +88,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.4...v0.2.5
