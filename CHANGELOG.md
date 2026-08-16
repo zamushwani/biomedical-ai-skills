@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-08-16
+
+### Added
+- drug-response skill: dose-response curve fitting (4PL via drc LL.4/LL2.4, the maintained nplr alternative, and GDSC's joint-model gdscIC50), why AUC beats IC50 as a response metric, curated retrieval through PharmacoGx with recomputed sensitivity measures, cross-dataset concordance and why it is only moderate, sensitivity prediction with a regularized-regression baseline and the feature-leakage and tissue-confounding traps, and tissue-corrected pharmacogenomic biomarker discovery
+- Records that the cancerrxgene.org GDSC portal currently returns HTTP 410, that CRAN PharmacoGx is frozen at the 2016 version while Bioconductor is maintained, and that published IC50/AUC are not comparable across datasets
+
 ## [0.3.2] - 2026-08-15
 
 ### Fixed
@@ -93,7 +99,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.2.6...v0.3.0

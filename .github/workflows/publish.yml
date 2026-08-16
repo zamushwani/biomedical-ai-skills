@@ -38,6 +38,7 @@ jobs:
               "foundation-models",
               "meta-analysis",
               "variant-annotation",
+              "drug-response",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {
