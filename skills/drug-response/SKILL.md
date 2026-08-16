@@ -111,9 +111,11 @@ the upper asymptote near 100% (untreated) and bound the lower at 0:
                          upperl = c( Inf, Inf, 110, Inf))
 
 Convergence failures are common and SILENT-ish. drm() may return a fit that
-did not converge with only a warning. Check fit$fit$convergence == 0 (or
-that the object has a valid `coefficients`), and refit failures with different
-starting values rather than trusting the returned parameters.
+did not converge with only a warning. drc stores convergence as a LOGICAL in
+fit$fit$convergence, where TRUE means it converged (this is not the optim()
+integer convention where 0 means success). Check isTRUE(fit$fit$convergence),
+and refit failures with different starting values rather than trusting the
+returned parameters.
 ```
 
 ### The maintained alternative
@@ -292,7 +294,7 @@ Biomarkers
 
 ### Curve fitting
 1. **Reporting IC50 for a curve that never reaches 50% inhibition**: a drug plateauing at 60% viability has no IC50. Pipelines substitute the max concentration, which is not a measurement. Use AUC, and flag extrapolated IC50 values.
-2. **Trusting a `drm()` fit without checking convergence**: it can return non-converged parameters with only a warning. Check the convergence code and refit failures with new starting values.
+2. **Trusting a `drm()` fit without checking convergence**: it can return non-converged parameters with only a warning. Check `isTRUE(fit$fit$convergence)` — drc uses a logical where `TRUE` means converged, not the optim `== 0` convention — and refit failures with new starting values.
 3. **Fitting on a linear concentration scale**: use `LL2.4` (log EC50) for concentrations spanning orders of magnitude, which every drug screen does.
 4. **Leaving asymptotes unconstrained**: unconstrained fits produce negative viability or 130% upper asymptotes. Bound them to biology.
 5. **Per-curve fitting when reproducing GDSC**: GDSC uses a joint model across cell lines (`gdscIC50`). Independent `drm()` fits will not reproduce its IC50 values.

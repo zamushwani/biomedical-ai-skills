@@ -42,6 +42,25 @@ biomedical-skills install drug-response
 | Feature leakage | Selecting biomarker genes on the full dataset before CV leaks the test fold. Select inside each fold |
 | Tissue confounding | A model can predict response by predicting lineage. Test across lineages |
 
+## Validation
+
+Tests in [`tests/`](tests/) run on simulated dose-response and prediction problems with a known ground truth, so no multi-gigabyte PharmacoSet download is needed. The curve test cross-checks against `drc` and `nplr` when installed.
+
+**Executed 2026-08-16: 22 assertions, 0 failures** (R 4.5.1, drc 3.0.1, nplr 0.1.8, glmnet 4.1.10).
+
+```bash
+Rscript tests/run_all.R
+```
+
+Things the suite demonstrates rather than asserts:
+
+- A plateauing curve (never below 60% viability) has **no observed IC50** — the function returns NA — while AUC (0.85) is defined. AAC = 1 − AUC
+- `drc` returns ED50 = 0.278 for that plateau curve anyway, an **extrapolation**, not a measurement
+- Selecting features before cross-validation reports r ≈ 0.82; nested selection reports r ≈ 0.35 on the same data
+- A lineage-confounded model scores r ≈ 0.95 under random-fold CV and **collapses to negative** under leave-lineage-out
+
+It also corrected the skill: `drc`'s convergence flag is a **logical** (`TRUE` = converged), not the optim `== 0` convention. The earlier text used the wrong check.
+
 ## Data source status (2026-08)
 
 | Source | Status | Use |

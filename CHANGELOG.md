@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-16
+
+### Added
+- drug-response validation tests: 22 assertions across two R scripts, executed on 2026-08-16 with 0 failures. Runs on simulated dose-response and prediction problems with a known ground truth, cross-checking against drc and nplr when installed. Confirms a plateauing curve has no observed IC50 while AUC is defined, that drc extrapolates an ED50 for such a curve anyway, and that feature selection outside the cross-validation loop and lineage confounding both inflate apparent prediction accuracy
+- **Phase 3 complete: all ten Phase 1-3 skills shipped and validated.** cancer-multiomics, immune-deconvolution, survival-analysis, single-cell-atlas, spatial-transcriptomics, foundation-models, meta-analysis, variant-annotation, drug-response, each with a test suite
+
+### Fixed
+- drug-response skill: the convergence check for a `drc` fit was `fit$fit$convergence == 0`, the optim integer convention. drc stores convergence as a logical, so `TRUE` means converged. Corrected to `isTRUE(fit$fit$convergence)`, verified against the real fitter during validation
+
 ## [0.3.3] - 2026-08-16
 
 ### Added
@@ -99,7 +108,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.0...v0.3.1
