@@ -39,6 +39,7 @@ jobs:
               "meta-analysis",
               "variant-annotation",
               "drug-response",
+              "clinical-nlp",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {

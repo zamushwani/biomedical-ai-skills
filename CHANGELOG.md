@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-17
+
+### Added
+- clinical-nlp skill: corpus access and DUA constraints before any code, note sectioning, biomedical NER with scispaCy, assertion detection via medspaCy ConText, concept normalization to UMLS with MedCAT and QuickUMLS compared, ICD-10 candidate generation framed for coder review rather than billing, temporal relation extraction, adverse event identification with the indication confound, de-identification against HIPAA Safe Harbor, and when a rule-based pipeline beats a clinical transformer
+- Records the scispaCy dependency conflicts verified this session: it pins `numpy<2.0` and `python<3.13`, its published models stop at 0.5.4 while the package is 0.6.2 so a version-matched URL 404s, and its spaCy pin is disjoint from medspaCy's on Python below 3.12
+- Records that `philter-ucsf` was last released 2020-04-19 and names Presidio as the maintained replacement, and that MedCAT 2.x is a rewrite that will not run v1.9.x code
+
 ## [0.4.0] - 2026-08-16
 
 ### Added
@@ -108,7 +115,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.1...v0.3.2
