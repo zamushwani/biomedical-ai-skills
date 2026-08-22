@@ -1,6 +1,6 @@
 # Computational Pathology
 
-Whole-slide image processing for cancer histopathology. Covers reading vendor formats with OpenSlide, the coordinate and resolution semantics that cause most WSI bugs, tissue detection, tile extraction, stain normalization, and H&E colour deconvolution.
+Whole-slide image processing and slide-level modelling for cancer histopathology. Covers reading vendor formats with OpenSlide, the coordinate and resolution semantics that cause most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, and multiple instance learning for slide-level prediction.
 
 ## When to Use This Skill
 
@@ -12,6 +12,10 @@ Activate when the user requests:
 - Stain normalization across slides or scanners
 - H&E colour deconvolution, or separating hematoxylin from eosin
 - Working at a target magnification or microns-per-pixel
+- Tile embeddings from UNI, CONCH, Virchow, Prov-GigaPath, H-optimus or Phikon
+- Multiple instance learning with CLAM, DSMIL, TransMIL or attention pooling
+- Slide-level prediction from tile features
+- Splitting a pathology cohort without leakage
 
 ## Inputs
 
@@ -300,6 +304,206 @@ Input is also floored: np.maximum(rgb, 1e-6) avoids log(0), so pure black
 is not preserved either.
 ```
 
+## Feature Extraction
+
+A slide is far too large for a single forward pass, so the standard pipeline encodes tiles independently and aggregates the embeddings. Tile encoders pretrained on histopathology beat ImageNet features by a wide margin, which is why they are worth the access friction below.
+
+### Access is the first problem, not the last
+
+```
+Almost every pathology foundation model is GATED on HuggingFace. You must be
+logged in and have accepted the model's terms before the weights download.
+
+Verified anonymously, 2026-08:
+    MahmoodLab/UNI    config.json -> HTTP 401
+    owkin/phikon-v2   config.json -> HTTP 200
+
+A script that works on the author's machine fails for a collaborator with a
+401 that reads like a network error. Authenticate explicitly and fail loudly:
+
+    from huggingface_hub import login
+    login(token=os.environ["HF_TOKEN"])      # never hardcode the token
+```
+
+| Model | Gated | Licence | Kind |
+|---|---|---|---|
+| `MahmoodLab/UNI` | yes | CC-BY-NC-ND-4.0 | vision, self-supervised |
+| `MahmoodLab/UNI2-h` | yes | CC-BY-NC-ND-4.0 | vision, larger |
+| `MahmoodLab/CONCH` | yes | CC-BY-NC-ND-4.0 | **vision-language** |
+| `paige-ai/Virchow` | yes | Apache-2.0 | vision |
+| `paige-ai/Virchow2` | yes | CC-BY-NC-ND-4.0 | vision |
+| `prov-gigapath/prov-gigapath` | yes | Apache-2.0 | tile + slide encoder |
+| `bioptimus/H-optimus-0` | yes | Apache-2.0 | vision |
+| `owkin/phikon` | **no** | other | vision, 768-dim |
+| `owkin/phikon-v2` | **no** | other | vision, 1024-dim (DINOv2) |
+
+```
+LICENCES ARE NOT A FORMALITY HERE.
+
+CC-BY-NC-ND covers UNI, UNI2-h, CONCH and Virchow2. NC forbids commercial
+use. ND forbids distributing derivative works, which on a plain reading
+includes a fine-tuned checkpoint. If your plan is to fine-tune and release
+weights, or to deploy clinically, check the licence BEFORE you build on it.
+Virchow v1, Prov-GigaPath and H-optimus-0 are Apache-2.0 and do not carry
+those restrictions.
+
+The ungated Owkin models are the ones to prototype with: no access request,
+no 401, and phikon-v2 is a reasonable encoder. Swap in a gated model once
+you have confirmed the pipeline and the licence.
+```
+
+### Loading a tile encoder
+
+```python
+import timm, torch
+
+model = timm.create_model("hf-hub:MahmoodLab/UNI", pretrained=True,
+                          init_values=1e-5, dynamic_img_size=True)
+model.eval()
+cfg = timm.data.resolve_data_config({}, model=model)
+transform = timm.data.create_transform(**cfg)      # do NOT hand-roll this
+```
+
+```
+Use the transform the model ships with. Each encoder was trained at a
+specific input size with specific normalization constants, and substituting
+ImageNet mean/std or a different resize silently degrades the embeddings.
+Nothing errors; the features are just worse, and you will attribute the
+drop to your data.
+
+Embedding dimension is a property of the model, not a constant:
+    phikon      768
+    phikon-v2  1024
+Read it from the model rather than hardcoding, because a downstream MIL head
+sized for the wrong dimension either crashes or, worse, trains on a
+misaligned view after a reshape.
+
+    dim = model.num_features
+```
+
+### CONCH is a different kind of model
+
+```
+CONCH is vision-LANGUAGE, trained on image-caption pairs. That buys
+zero-shot classification from text prompts, which the vision-only encoders
+cannot do. It also means the image tower alone is not necessarily the best
+pure vision encoder available; if you only need embeddings, compare against
+UNI or H-optimus-0 rather than assuming the multimodal model dominates.
+```
+
+### CTransPath needs a forked timm
+
+```
+CTransPath is still widely cited, and its repository asks you to install a
+MODIFIED timm 0.5.4 distributed as a tarball on a Google Drive link. Current
+timm is 1.0.28.
+
+That is a reproducibility and supply-chain problem: a pinned fork from a
+file-sharing link, unversioned on PyPI, that conflicts with the timm every
+other model in your pipeline needs. If you need CTransPath, isolate it in
+its own environment. Prefer an encoder that loads from current timm.
+```
+
+## Multiple Instance Learning
+
+You have a label per slide and no label per tile. That is exactly the MIL setting: a bag of instances carries one bag-level label.
+
+```
+bag       = one slide
+instances = its tiles (hundreds to tens of thousands)
+label     = slide-level (diagnosis, grade, mutation status, outcome)
+
+The model must learn which instances matter without ever being told.
+```
+
+### Attention pooling
+
+```python
+import torch, torch.nn as nn
+
+class ABMIL(nn.Module):
+    """Attention-based MIL pooling (Ilse et al.). One bag at a time."""
+    def __init__(self, dim, hidden=256, n_classes=2):
+        super().__init__()
+        self.attn = nn.Sequential(nn.Linear(dim, hidden), nn.Tanh(),
+                                  nn.Linear(hidden, 1))
+        self.head = nn.Linear(dim, n_classes)
+
+    def forward(self, h):                    # h: (n_tiles, dim)
+        a = torch.softmax(self.attn(h), dim=0)   # (n_tiles, 1)
+        z = (a * h).sum(dim=0)                   # weighted bag embedding
+        return self.head(z), a
+```
+
+```
+Bag size varies by orders of magnitude across slides, so batching is not
+straightforward. The usual answer is batch size 1 with gradient
+accumulation. A fixed-size random subsample of tiles per bag is the common
+alternative, and it changes what the model sees each epoch; state which you
+used.
+
+Softmax over instances means attention is a distribution: adding more
+background tiles to a bag mathematically lowers the weight on the tiles that
+matter. Tissue filtering is therefore not just a compute saving, it changes
+the optimisation.
+```
+
+### Framework choice
+
+| Framework | Licence | Note |
+|---|---|---|
+| CLAM | **GPL-3.0** | attention MIL plus instance-level clustering. Copyleft: check before embedding in a product |
+| DSMIL | MIT | dual-stream, permissive |
+| TransMIL | **none declared** | self-attention over instances. With no licence, default copyright applies and reuse rights are unclear |
+| TRIDENT | see repo | the maintained Mahmood Lab pipeline, actively developed |
+| `torchmil` | see repo | generic deep MIL for PyTorch, on PyPI |
+
+```
+`pip install trident` DOES NOT install the pathology TRIDENT. That name on
+PyPI belongs to an astrophysics package for simulating UV observations.
+The pathology one installs from source:
+
+    git clone https://github.com/mahmoodlab/trident.git && cd trident
+    pip install -e .
+    pip install -e ".[patch-encoders]"      # CONCH, MUSK, CTransPath/CHIEF
+    pip install -e ".[slide-encoders]"      # PRISM, GigaPath, Madeleine
+
+A tutorial that says "pip install trident" was not run by its author.
+```
+
+### The split that decides whether any of this is real
+
+```
+SPLIT BY SLIDE, AND BY PATIENT. NEVER BY TILE.
+
+Tiles from one slide are near-duplicates of each other. If tiles from the
+same slide land in both train and test, the model memorises the slide and
+reports near-perfect accuracy that collapses on new cases. This is the
+single most common way a computational pathology result turns out to be
+worthless.
+
+Patient, not just slide: one patient often contributes several slides, and
+two slides from the same block share more than biology.
+
+Stratify by site as well when the cohort is multi-institutional. Scanner and
+staining protocol are site-specific, so a model can separate outcomes by
+learning the site. Report performance on a held-out SITE, not only a
+held-out patient, whenever the data allows it.
+```
+
+```
+Baselines, as always:
+  - mean-pooled tile embeddings with logistic regression
+  - max-pooled embeddings
+Attention MIL that does not beat mean pooling has not earned its complexity.
+Report the baseline in the same table.
+
+Attention weights are NOT an explanation. They show what the pooling
+up-weighted for that prediction, which is not the same as evidence a
+pathologist would accept, and they are unstable across seeds. Show them as a
+hypothesis to review, and report agreement with annotation when you have it.
+```
+
 ## Output Specification
 
 | Output | Format | Description |
@@ -310,6 +514,10 @@ is not preserved either.
 | `slide_manifest.csv` | CSV | slide_id, vendor, mpp-x, mpp-y, objective power, level dims |
 | `stain_reference.png` | PNG | the exact reference tile used for normalization |
 | `qc_flags.csv` | CSV | slides missing mpp, failed Otsu, or with extreme tissue fraction |
+| `features.h5` | HDF5 | tile embeddings per slide, with level-0 coordinates alongside |
+| `encoder_manifest.json` | JSON | model id, revision, embedding dim, transform config |
+| `splits.csv` | CSV | slide and patient assignment per fold, with site where known |
+| `attention.h5` | HDF5 | per-tile attention weights, stored as hypotheses not explanations |
 
 Name tiles by their **level 0** coordinates and record the level and mpp beside them. A tile named by level-2 coordinates cannot be located on the slide without knowing which level produced it.
 
@@ -333,6 +541,19 @@ Stain handling
   Normalization skipped for tiles below the tissue threshold.
   DAB channel not interpreted as a stain on H&E-only slides.
   Clipped channels checked when a faithful round trip matters.
+
+Feature extraction
+  Model loaded with its own timm transform, not a hand-rolled one.
+  Embedding dimension read from the model, never hardcoded.
+  Model id AND revision recorded; gated models authenticated explicitly.
+  Licence checked before fine-tuning or deployment.
+
+Multiple instance learning
+  Splits made by PATIENT, never by tile. Site held out when available.
+  Mean-pooling baseline reported beside the attention model.
+  Bag construction stated: all tiles, or a subsample of fixed size.
+  Attention weights presented as hypotheses, with annotation agreement
+  where annotation exists.
 
 Reproducibility
   Slide manifest records vendor and mpp per slide, so scanner effects can
@@ -366,6 +587,22 @@ Reproducibility
 16. **Normalizing background tiles**: stain vectors estimated from glass are meaningless. Detect tissue first.
 17. **Reading the DAB channel on an H&E slide**: `rgb2hed` always returns three channels, and the third absorbs residual. It is not DAB positivity.
 18. **Assuming `rgb2hed`/`hed2rgb` round-trips**: negatives are clipped to zero, so the inverse is exact only where nothing clipped (measured: 1.1e-16 unclipped, 6.1e-01 clipped). Check for zeroed channels when it matters.
+
+### Feature extraction
+19. **Assuming the weights just download**: nearly every pathology foundation model is gated. Anonymously, `MahmoodLab/UNI` returns HTTP 401 while `owkin/phikon-v2` returns 200. Authenticate explicitly, or a collaborator hits a 401 that looks like a network fault.
+20. **Ignoring the licence**: UNI, UNI2-h, CONCH and Virchow2 are CC-BY-NC-ND — non-commercial *and* no-derivatives, which on a plain reading covers a fine-tuned checkpoint. Virchow v1, Prov-GigaPath and H-optimus-0 are Apache-2.0. Check before building, not after.
+21. **Hand-rolling the preprocessing transform**: each encoder ships its own input size and normalization. Substituting ImageNet constants degrades embeddings silently. Use `timm.data.create_transform` on the model's own config.
+22. **Hardcoding the embedding dimension**: it is a model property (phikon 768, phikon-v2 1024). Read `model.num_features`, or a MIL head sized wrongly will crash or train on a misaligned view.
+23. **Installing CTransPath beside a modern stack**: it requires a forked timm 0.5.4 from a Google Drive link while current timm is 1.0.28. Isolate it, or pick an encoder that loads from current timm.
+24. **`pip install trident`**: that name on PyPI is an astrophysics package. The pathology TRIDENT installs from its git repository.
+
+### Multiple instance learning
+25. **Splitting by tile**: tiles from one slide are near-duplicates, so tile-level splits let the model memorise the slide and report accuracy that collapses on new cases. Split by patient.
+26. **Splitting by slide but not patient**: one patient contributes several slides, and slides from the same block share more than biology.
+27. **Ignoring site in a multi-institution cohort**: scanner and staining are site-specific, so a model can separate outcomes by learning the site. Hold out a site when the data allows.
+28. **Omitting the mean-pooling baseline**: attention MIL that does not beat mean-pooled embeddings with logistic regression has not earned its complexity.
+29. **Presenting attention weights as explanations**: they show what pooling up-weighted, are unstable across seeds, and are not evidence a pathologist would accept. Report them as hypotheses, with annotation agreement where it exists.
+30. **Leaving background tiles in the bag**: attention is a softmax over instances, so background tiles mathematically dilute the weight on informative ones. Tissue filtering changes the optimisation, not just the runtime.
 
 ## Related Skills
 

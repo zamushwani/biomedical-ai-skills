@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-22
+
+### Added
+- computational-pathology (part 2, feature extraction): pathology foundation models as tile encoders, multiple instance learning with attention pooling, framework choice, and the splitting discipline that decides whether a slide-level result is real
+- Records that nearly every pathology encoder is gated on HuggingFace, proven anonymously (`MahmoodLab/UNI` returns HTTP 401 where `owkin/phikon-v2` returns 200), and that UNI, UNI2-h, CONCH and Virchow2 carry CC-BY-NC-ND licences whose no-derivatives clause covers a fine-tuned checkpoint, while Virchow v1, Prov-GigaPath and H-optimus-0 are Apache-2.0
+- Records two install traps: `pip install trident` fetches an astrophysics package rather than Mahmood Lab's pathology TRIDENT, which installs from git, and CTransPath requires a forked timm 0.5.4 from a Google Drive link against a current timm of 1.0.28
+- Records the MIL framework licences: CLAM is GPL-3.0, DSMIL is MIT, and TransMIL declares none, so its reuse rights are unclear
+- States the leakage rule directly: split by patient rather than tile or slide, hold out a site in multi-institution cohorts, report a mean-pooling baseline beside any attention model, and treat attention weights as hypotheses rather than explanations
+
 ## [0.6.0] - 2026-08-22
 
 ### Added
@@ -134,7 +143,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...v0.5.0

@@ -1,8 +1,8 @@
 # computational-pathology
 
-Whole-slide image processing for cancer histopathology: reading vendor formats, the coordinate and resolution semantics behind most WSI bugs, tissue detection, tile extraction, stain normalization, and H&E colour deconvolution.
+Whole-slide image processing and slide-level modelling for cancer histopathology: reading vendor formats, the coordinate and resolution semantics behind most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, and multiple instance learning.
 
-> **Part 1 of a multi-part skill.** This covers WSI processing. Feature extraction, slide-level analysis, and validation follow.
+> **Parts 1–2 of a multi-part skill.** WSI processing and feature extraction. Slide-level analysis and validation follow.
 
 ```mermaid
 graph TD
@@ -13,6 +13,8 @@ graph TD
     A --> F["Tiling<br>overlap · RGBA on white"]
     A --> G["Stain norm<br>Macenko · Reinhard"]
     A --> H["Deconvolution<br>rgb2hed · clipping"]
+    A --> I["Tile encoders<br>UNI · CONCH · Phikon"]
+    A --> J["MIL<br>attention · slide-level"]
     style A fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
     style B fill:#1a1a2e,stroke:#4ecdc4,color:#fff,stroke-width:2px
     style C fill:#1a1a2e,stroke:#e84d3c,color:#fff,stroke-width:2px
@@ -21,6 +23,8 @@ graph TD
     style F fill:#1a1a2e,stroke:#276DC3,color:#fff,stroke-width:2px
     style G fill:#1a1a2e,stroke:#f39c12,color:#fff,stroke-width:2px
     style H fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
+    style I fill:#1a1a2e,stroke:#1abc9c,color:#fff,stroke-width:2px
+    style J fill:#1a1a2e,stroke:#e67e22,color:#fff,stroke-width:2px
 ```
 
 ## Usage
@@ -35,6 +39,8 @@ biomedical-skills install computational-pathology
 **Coordinate frames.** `read_region(location, level, size)` takes `location` in the **level 0** frame and `size` in the **target level** frame — two frames in one call. The result has the right shape and the wrong content, and it only shows up once you move off level 0, so a level-0 prototype hides it.
 
 **Magnification is not resolution.** "40x" is a nominal objective power that maps to roughly 0.23–0.28 µm/px depending on scanner. Tiles cut at "40x" from two scanners sit at different physical scales, and the model learns the scanner. Work in microns per pixel.
+
+**Splitting by tile.** Tiles from one slide are near-duplicates. A tile-level split lets the model memorise the slide and report near-perfect accuracy that collapses on new cases. Split by **patient**, and hold out a **site** when the cohort is multi-institutional.
 
 ## What it gets right that is easy to get wrong
 
@@ -55,6 +61,50 @@ biomedical-skills install computational-pathology
 | Stain reference tile | Every normalized value depends on it. Record it, reuse it across train and test |
 | `rgb2hed` third channel | Always returns H, **E and DAB**. On H&E the DAB channel absorbs residual — it is not DAB positivity |
 | `rgb2hed` round trip | Negatives are **clipped to zero**, so the inverse is exact only where nothing clipped |
+| Model gating | Nearly all pathology encoders are gated. `UNI` returns **HTTP 401** anonymously |
+| CC-BY-NC-ND | UNI, UNI2-h, CONCH, Virchow2. **ND covers a fine-tuned checkpoint** |
+| Preprocessing transform | Use the model's own via `timm.data.create_transform`. ImageNet constants degrade embeddings silently |
+| Embedding dim | A model property (phikon 768, phikon-v2 1024). Read `model.num_features` |
+| Tile-level splits | Tiles from one slide are near-duplicates. Split by **patient**, hold out a **site** |
+| Attention weights | Not explanations. Unstable across seeds; report as hypotheses |
+| Background tiles in a bag | Attention is a softmax, so background **dilutes** weight on informative tiles |
+
+## Foundation models: access and licence, verified 2026-08
+
+Nearly every pathology encoder is **gated** on HuggingFace. Proven anonymously:
+
+```
+MahmoodLab/UNI    config.json -> HTTP 401
+owkin/phikon-v2   config.json -> HTTP 200
+```
+
+| Model | Gated | Licence | Kind |
+|---|---|---|---|
+| `MahmoodLab/UNI` | yes | **CC-BY-NC-ND-4.0** | vision |
+| `MahmoodLab/UNI2-h` | yes | **CC-BY-NC-ND-4.0** | vision, larger |
+| `MahmoodLab/CONCH` | yes | **CC-BY-NC-ND-4.0** | vision-language |
+| `paige-ai/Virchow` | yes | Apache-2.0 | vision |
+| `paige-ai/Virchow2` | yes | **CC-BY-NC-ND-4.0** | vision |
+| `prov-gigapath/prov-gigapath` | yes | Apache-2.0 | tile + slide |
+| `bioptimus/H-optimus-0` | yes | Apache-2.0 | vision |
+| `owkin/phikon` | **no** | other | vision, 768-dim |
+| `owkin/phikon-v2` | **no** | other | vision, 1024-dim |
+
+**ND means no derivatives** — on a plain reading that covers a fine-tuned checkpoint. If you intend to fine-tune and release weights, or deploy commercially, the Apache-2.0 models are the ones that permit it. Prototype on the ungated Owkin models, then swap.
+
+## Two install traps
+
+**`pip install trident` installs an astrophysics package** for simulating UV observations. Mahmood Lab's pathology TRIDENT installs from its git repository.
+
+**CTransPath requires a forked timm 0.5.4** distributed as a tarball on a Google Drive link; current timm is 1.0.28. Isolate it or pick another encoder.
+
+## MIL framework licences
+
+| Framework | Licence |
+|---|---|
+| CLAM | **GPL-3.0** — copyleft, check before embedding in a product |
+| DSMIL | MIT |
+| TransMIL | **none declared** — default copyright, reuse rights unclear |
 
 ## Measured: colour deconvolution clipping
 
@@ -88,3 +138,7 @@ pip install openslide-python openslide-bin
 | Stain deconvolution | `HistomicsTK` 1.4.0 | maintained (pushed 2026-08) |
 | Stain normalization | `torchstain` 1.4.1 | maintained |
 | Stain normalization | `staintools` 2.1.2 | **archived** — do not start new work on it |
+| Tile encoder loading | `timm` 1.0.28 | maintained; use each model's own transform |
+| Slide pipeline | `mahmoodlab/TRIDENT` | active (pushed 2026-08); **install from git, not PyPI** |
+| MIL | `CLAM` / `DSMIL` / `TransMIL` | GPL-3.0 / MIT / **no licence declared** |
+| Generic deep MIL | `torchmil` 1.0.2 | on PyPI |
