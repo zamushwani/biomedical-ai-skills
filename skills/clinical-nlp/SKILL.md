@@ -134,17 +134,20 @@ aggregate counts. Section first, then filter.
 The single largest error source in clinical NLP. Most mentions of a disease in a note are *not* assertions that the patient has it.
 
 ```python
-# medspacy.load() includes ConText by default; it sets five span attributes
-doc = nlp("No evidence of pneumonia. Mother had breast cancer. "
-          "Will rule out sepsis.")
-
+# medspacy.load() includes ConText by default; it sets five span attributes.
+# Which trigger fires which attribute is not obvious - these are measured:
+#   is_negated      "no evidence of pneumonia", "denies", "cannot exclude"
+#   is_family       "mother had", "sister has", "family history of"
+#   is_historical   "history of", "family history of" (sets family too)
+#   is_hypothetical "if the patient develops sepsis", "return if fever"
+#   is_uncertain    "will rule out sepsis", "suspicious for", "possible"
+#
+# "rule out X" is UNCERTAIN, not hypothetical. Only an if-construction
+# makes it hypothetical. Getting this backwards mislabels every deferred
+# diagnosis in a cohort.
 for ent in doc.ents:
-    print(ent.text,
-          ent._.is_negated,        # "no evidence of pneumonia"
-          ent._.is_family,         # "mother had breast cancer"
-          ent._.is_hypothetical,   # "will rule out sepsis"
-          ent._.is_historical,
-          ent._.is_uncertain)
+    print(ent.text, ent._.is_negated, ent._.is_family,
+          ent._.is_historical, ent._.is_hypothetical, ent._.is_uncertain)
 ```
 
 ```
@@ -165,6 +168,19 @@ def is_active_finding(ent) -> bool:
 ```
 
 ConText is a rule system (an implementation of the ConText algorithm, itself an extension of NegEx). It fails on constructions its rules do not cover — long-range scope, unusual phrasing, tables. A clinical transformer fine-tuned for assertion beats it on hard cases; ConText wins on transparency, speed, and needing no labelled data.
+
+Two gaps worth knowing, both measured against medspaCy 1.3.1 defaults:
+
+```
+"Patient at risk for stroke."   -> all five attributes False
+"Status post MI in 2019."       -> all five attributes False
+```
+
+A risk statement is not a diagnosis, and "status post" is by definition
+historical, but neither phrasing is in the default rule set, so both are
+reported as active findings. Add target-specific rules for the phrasings your
+corpus actually uses, and audit a sample by hand before trusting the counts.
+The failure is silent: nothing errors, the entity simply looks active.
 
 ## Concept Normalization
 
@@ -401,16 +417,17 @@ Reproducibility
 ### Extraction
 7. **Reporting entities without section context**: "colon cancer" under Family History is not a patient diagnosis. Section first, then filter.
 8. **Checking `is_negated` alone**: it misses family history, hypotheticals, and historical mentions. Require all five ConText attributes to be False before calling something an active finding.
-9. **Expecting typed entities from `en_core_sci_*`**: those models find spans without typing them. Add an `en_ner_*` model for types, and do not assume the label sets merge.
-10. **Taking `kb_ents[0]` as the answer**: it is a ranked candidate list, and the top hit can score barely above threshold. Apply your own cutoff and keep the score.
-11. **Omitting `linker_name`**: it has no default. The linker must be told which knowledge base to use, and MeSH identifiers are not CUIs.
-12. **Leaving `filter_for_definitions=True` when recall matters**: it silently drops concepts that lack definition text.
+9. **Assuming ConText's default rules cover your phrasing**: "Patient at risk for stroke" and "Status post MI in 2019" both come back with all five attributes False, so both read as active findings. The failure is silent. Audit a hand-labelled sample and add rules for your corpus's phrasings.
+10. **Expecting typed entities from `en_core_sci_*`**: those models find spans without typing them. Add an `en_ner_*` model for types, and do not assume the label sets merge.
+11. **Taking `kb_ents[0]` as the answer**: it is a ranked candidate list, and the top hit can score barely above threshold. Apply your own cutoff and keep the score.
+12. **Omitting `linker_name`**: it has no default. The linker must be told which knowledge base to use, and MeSH identifiers are not CUIs.
+13. **Leaving `filter_for_definitions=True` when recall matters**: it silently drops concepts that lack definition text.
 
 ### Interpretation
-13. **Presenting automated ICD-10 output as billing codes**: coding depends on documentation and payer rules the text does not determine. Output ranked candidates with evidence spans for a coder.
-14. **Calling drug–symptom co-occurrence an adverse event**: without temporal order and indication exclusion it is co-occurrence. Metformin and hyperglycaemia co-occur with the causality reversed.
-15. **Evaluating a MIMIC-trained model on MIMIC**: Bio_ClinicalBERT was pretrained on those notes, so the test set overlaps pretraining. State the overlap or change corpus.
-16. **Reporting F1 alone for extraction**: precision and recall fail for different reasons and need different fixes. Report both, per entity type.
+14. **Presenting automated ICD-10 output as billing codes**: coding depends on documentation and payer rules the text does not determine. Output ranked candidates with evidence spans for a coder.
+15. **Calling drug–symptom co-occurrence an adverse event**: without temporal order and indication exclusion it is co-occurrence. Metformin and hyperglycaemia co-occur with the causality reversed.
+16. **Evaluating a MIMIC-trained model on MIMIC**: Bio_ClinicalBERT was pretrained on those notes, so the test set overlaps pretraining. State the overlap or change corpus.
+17. **Reporting F1 alone for extraction**: precision and recall fail for different reasons and need different fixes. Report both, per entity type.
 
 ## Related Skills
 

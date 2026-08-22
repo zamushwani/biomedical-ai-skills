@@ -57,6 +57,36 @@ Sending credentialed note text to a hosted API is a DUA breach, not a grey area.
 | MIMIC evaluation | Bio_ClinicalBERT was pretrained on MIMIC notes, so a MIMIC test set overlaps pretraining |
 | Automated de-identification | Safe Harbor is **categorical** — one surviving name fails it. A first pass before human review, not compliance |
 
+## Validation
+
+Tests in [`tests/`](tests/) use only synthetic text — no corpus download, no credentialed data. scispaCy is deliberately avoided (its `numpy<2.0` pin blocks a current stack); its constraints are verified from PyPI metadata instead.
+
+**Executed 2026-08-22: 45 assertions, 0 failures** (Python 3.13.5, medspaCy 1.3.1, spaCy 3.8.15, Presidio 2.2.364).
+
+```bash
+cd tests && python run_all.py
+```
+
+The central result, on a four-entity synthetic note:
+
+| Check | Findings reported |
+|---|---|
+| naive — `is_negated` only | **3** |
+| correct — all five attributes | **0** |
+
+The three spurious ones are a father's colon cancer, a resolved 2020 pneumonia, and a penicillin allergy.
+
+Two gaps the suite documents — both return all five attributes False, so both read as active findings:
+
+```
+"Patient at risk for stroke."
+"Status post MI in 2019."
+```
+
+It also corrected the skill: **`rule out X` sets `is_uncertain`, not `is_hypothetical`.** Only an if-construction is hypothetical. The original text had that backwards.
+
+And it pins Presidio's clinical behaviour: `MRN 00123456` is typed `US_BANK_NUMBER`/`US_DRIVER_LICENSE`, a specimen accession is typed `US_DRIVER_LICENSE`, and a bare `555-0142` is missed entirely.
+
 ## Dependency conflicts, verified 2026-08
 
 ```

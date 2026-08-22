@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-22
+
+### Added
+- clinical-nlp validation tests: 45 assertions across three Python scripts, executed on 2026-08-22 with 0 failures. All text is synthetic; no corpus is downloaded and no credentialed data is touched. Demonstrates the skill's central claim on a four-entity note, where the naive `is_negated`-only check reports three findings (a father's colon cancer, a resolved 2020 pneumonia, a penicillin allergy) while the correct five-attribute check reports none
+- The dependency suite resolves real PyPI metadata rather than asserting pins from memory: on Python 3.11 scispaCy and medspaCy admit only spaCy 3.7.x while medspaCy and negspacy are disjoint, and a model URL built from the package version returns 404 where the published model version returns 200
+- The de-identification suite pins Presidio's clinical behaviour: an MRN is typed `US_BANK_NUMBER`/`US_DRIVER_LICENSE`, a specimen accession is typed `US_DRIVER_LICENSE`, a provider name is `PERSON` like the patient, and a bare local phone number is missed entirely
+- Two ConText gaps documented in the skill, both silent: "Patient at risk for stroke" and "Status post MI in 2019" return all five attributes False and so read as active findings
+
+### Fixed
+- clinical-nlp skill: the assertion example mapped "will rule out sepsis" to `is_hypothetical`. Measured against medspaCy 1.3.1, that phrasing sets `is_uncertain`; only an if-construction is hypothetical. Getting this backwards mislabels every deferred diagnosis in a cohort
+
 ## [0.5.0] - 2026-08-17
 
 ### Added
@@ -115,7 +126,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.2...v0.3.3
