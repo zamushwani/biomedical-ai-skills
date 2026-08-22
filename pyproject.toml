@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "biomedical-ai-skills"
-version = "0.5.1"
+version = "0.6.0"
 description = "SKILL.md files that give AI coding agents tested protocols for cancer bioinformatics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -62,6 +62,7 @@ packages = ["src/biomedical_ai_skills"]
 "skills/variant-annotation/SKILL.md" = "biomedical_ai_skills/skills/variant-annotation/SKILL.md"
 "skills/drug-response/SKILL.md" = "biomedical_ai_skills/skills/drug-response/SKILL.md"
 "skills/clinical-nlp/SKILL.md" = "biomedical_ai_skills/skills/clinical-nlp/SKILL.md"
+"skills/computational-pathology/SKILL.md" = "biomedical_ai_skills/skills/computational-pathology/SKILL.md"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -76,6 +77,7 @@ include = [
     "skills/variant-annotation",
     "skills/drug-response",
     "skills/clinical-nlp",
+    "skills/computational-pathology",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

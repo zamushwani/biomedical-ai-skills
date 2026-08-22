@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-22
+
+### Added
+- computational-pathology skill (part 1, WSI processing): reading vendor formats with OpenSlide, the level-0 coordinate frame that `read_region` mixes with the target-level frame, downsamples as floats rather than powers of two, microns-per-pixel as the unit of scale instead of nominal magnification, MIRAX bounds, tissue detection by saturation, tile extraction with overlap and RGBA compositing, stain normalization, and H&E colour deconvolution
+- Records the install trap that `openslide-python` is a binding whose only dependency is Pillow, so `openslide-bin` (or a system OpenSlide) is required separately, and that `staintools` was last released 2019-04-11 and archived on GitHub in 2021 with torchstain and HistomicsTK as the maintained replacements
+- Records that torchstain ships Macenko, MultiMacenko and Reinhard but not Vahadane, and that sparse-NMF separation lives in HistomicsTK as `separate_stains_xu_snmf`
+- Measures scikit-image's colour deconvolution clipping: `separate_stains` ends with `np.maximum(stains, 0)`, so on random RGB in [0.4, 0.9] 784 of 1024 pixels lose a channel, and the `rgb2hed`/`hed2rgb` round trip is exact to 1.1e-16 only where nothing clipped
+
 ## [0.5.1] - 2026-08-22
 
 ### Added
@@ -126,7 +134,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.3.3...v0.4.0
