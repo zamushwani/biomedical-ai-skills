@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-08-23
+
+### Added
+- computational-pathology validation tests: 24 assertions across three Python scripts, executed on 2026-08-23 with 0 failures (26 when a multi-level slide is supplied). The synthetic suites need no data; the OpenSlide suite downloads a ~1.9 MB public test slide at runtime and deletes it, so nothing is committed. **Every skill in the package now has an executed test suite.**
+- The suite verifies scikit-image's colour-deconvolution clipping (784 of 1024 random pixels lose a channel; the round trip is 1.11e-16 where nothing clipped and 6.12e-01 where it did), that a saturation threshold keeps pale tissue an intensity threshold discards, that `.convert("RGB")` turns unscanned area black, and OpenSlide's coordinate-frame semantics against the real Aperio CMU-1 slide, whose `level_downsamples` are (1.0, 4.000122, 16.000486) - level 1 is 4.000122 rather than 4, and `get_best_level_for_downsample(4)` returns 0 because it errs toward more resolution
+
 ## [0.6.2] - 2026-08-23
 
 ### Added
@@ -151,7 +157,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...v0.6.0

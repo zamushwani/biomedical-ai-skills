@@ -2,7 +2,7 @@
 
 Whole-slide image processing and slide-level modelling for cancer histopathology: reading vendor formats, the coordinate and resolution semantics behind most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, multiple instance learning, cell segmentation, spatial statistics on cell positions, and integration with molecular data.
 
-> **Parts 1–3 of a multi-part skill.** WSI processing, feature extraction, and slide-level analysis. Validation follows.
+> **Complete skill**, validated. WSI processing, feature extraction, slide-level analysis, and a validation suite.
 
 ```mermaid
 graph TD
@@ -81,6 +81,30 @@ biomedical-skills install computational-pathology
 | squidpy | Spatial stats, but **Python ≥ 3.12** |
 | Cells matched to spots | Adjacent sections don't share cells one-to-one. Integrate at the **region** level |
 | Morphology vs expression | Tracks tumour **purity**, which drives bulk expression. Adjust for purity |
+
+## Validation
+
+Tests in [`tests/`](tests/) cover the measurable image-processing claims: colour-deconvolution clipping, tissue detection, tile compositing, and OpenSlide's coordinate-frame semantics on a real slide. The synthetic suites need no data; the OpenSlide suite downloads a ~1.9 MB public slide at runtime and deletes it. **Nothing is committed.**
+
+**Executed 2026-08-23: 24 assertions, 0 failures** (Python 3.13.5, scikit-image 0.26.0, openslide-python 1.4.6); 26 with a multi-level slide.
+
+```bash
+cd tests && python run_all.py
+```
+
+Verified against the real Aperio **CMU-1** slide this session:
+
+| | |
+|---|---|
+| `level_downsamples` | **(1.0, 4.000122, 16.000486)** — level 1 is **4.000122, not 4** |
+| `get_best_level_for_downsample(4)` | **0**, not 1 — errs toward more resolution |
+| mpp-x / objective | 0.499 / 20 — so 20× is ~0.5 µm/px, not a fixed 0.25 |
+
+Synthetic, measured:
+
+- **Colour deconvolution** clips 784 of 1024 random pixels; the round trip is 1.11e-16 where nothing clipped and 6.12e-01 where it did.
+- **Saturation keeps pale tissue (1.00) that an intensity threshold discards (0.00)**; both reject glass.
+- **`.convert("RGB")` turns unscanned area black (0,0,0)**; compositing on white keeps it white.
 
 ## Foundation models: access and licence, verified 2026-08
 
