@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-23
+
+### Added
+- biomedical-mcp (part 2, GEO): searching GEO through NCBI E-utilities, retrieving expression as a Series Matrix from the FTP server, mapping probe IDs to genes through the GPL platform table, and the RNA-seq exception. All GEO tool bodies executed against the live NCBI API and FTP, six checks passing
+- Records the GEO data-shape traps: search returns metadata while values live in a Series Matrix on the FTP, a `gds` UID (200002034) is not the accession (GSE2034), Series Matrix rows are probe IDs not gene symbols, the FTP path is computed by turning the last three digits of the GSE number into `nnn`, and array series carry a real value table (GSE2034 has 22,283 probe rows) while RNA-seq series usually carry values only as supplementary files
+- Records that NCBI E-utilities allows 3 requests per second without an API key and 10 with one, and that a Python server should use GEOparse or geofetch rather than the R package GEOquery
+
 ## [0.7.0] - 2026-08-23
 
 ### Added
@@ -164,7 +171,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...v0.6.2
