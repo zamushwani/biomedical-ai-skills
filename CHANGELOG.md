@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-23
+
+### Added
+- biomedical-mcp skill (part 1, TCGA/GDC): building Model Context Protocol servers that give agents tested access to biomedical databases, covering MCP tool design (service-prefixed verb-led names, type-hints-as-schema, errors in the result object), the GDC REST API behind TCGA with search, mutation and clinical tools, pagination by from/size, and caching keyed on the data release. GEO and biomarker databases follow in later parts
+- Records that mcp 2.0.0 is a major version whose server class is `MCPServer` from `mcp.server`, not the 1.x `FastMCP` import, and that a Python MCP server should call the GDC REST API directly rather than wrapping the R package TCGAbiolinks (which is what TCGAbiolinks calls underneath)
+- Records the GDC data-shape traps, each checked against the live API (Data Release 46.0): expression is returned as ~28,000 downloadable file references rather than a matrix, clinical fields need `expand=demographic,diagnoses`, `ssms` counts distinct mutations while `ssm_occurrences` counts mutation-in-a-case, and fields such as `primary_site` are lists even when they look scalar
+
 ## [0.6.3] - 2026-08-23
 
 ### Added
@@ -157,7 +164,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...v0.6.1
