@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-08-23
+
+### Added
+- computational-pathology (part 3, analysis): cell and nucleus segmentation, tumour region and tertiary lymphoid structure detection, spatial statistics on segmented cell positions, and integration with matched molecular data
+- Records that StarDist ships a `2D_versatile_he` H&E nuclei model but `pip install stardist` pulls no deep-learning backend, so it fails at predict rather than install unless TensorFlow is added via `csbdeep[tf]`, and that its pretrained model expects `csbdeep.utils.normalize` percentile normalization rather than a 0-1 rescale
+- Records that HoVer-Net is git-only (MIT, last pushed 2023-10) and classifies cells into its training panel's types, and that squidpy's spatial statistics require Python 3.12 or newer
+- States the analysis-level discipline: segment at ~0.25 um/px and report cells per mm rather than per tile, mask Ripley's study region to tissue rather than the slide bounding box, treat neighbourhood-enrichment z-scores as within-slide, and integrate with molecular data at the registration level the data honestly supports rather than matching cells to spots across adjacent sections
+
 ## [0.6.1] - 2026-08-22
 
 ### Added
@@ -143,7 +151,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.5.0...v0.5.1

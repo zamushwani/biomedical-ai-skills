@@ -1,8 +1,8 @@
 # computational-pathology
 
-Whole-slide image processing and slide-level modelling for cancer histopathology: reading vendor formats, the coordinate and resolution semantics behind most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, and multiple instance learning.
+Whole-slide image processing and slide-level modelling for cancer histopathology: reading vendor formats, the coordinate and resolution semantics behind most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, multiple instance learning, cell segmentation, spatial statistics on cell positions, and integration with molecular data.
 
-> **Parts 1–2 of a multi-part skill.** WSI processing and feature extraction. Slide-level analysis and validation follow.
+> **Parts 1–3 of a multi-part skill.** WSI processing, feature extraction, and slide-level analysis. Validation follows.
 
 ```mermaid
 graph TD
@@ -15,6 +15,8 @@ graph TD
     A --> H["Deconvolution<br>rgb2hed · clipping"]
     A --> I["Tile encoders<br>UNI · CONCH · Phikon"]
     A --> J["MIL<br>attention · slide-level"]
+    A --> K["Segmentation<br>StarDist · HoVer-Net"]
+    A --> L["Spatial stats<br>Ripley · co-occurrence"]
     style A fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
     style B fill:#1a1a2e,stroke:#4ecdc4,color:#fff,stroke-width:2px
     style C fill:#1a1a2e,stroke:#e84d3c,color:#fff,stroke-width:2px
@@ -25,6 +27,8 @@ graph TD
     style H fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
     style I fill:#1a1a2e,stroke:#1abc9c,color:#fff,stroke-width:2px
     style J fill:#1a1a2e,stroke:#e67e22,color:#fff,stroke-width:2px
+    style K fill:#1a1a2e,stroke:#2ecc71,color:#fff,stroke-width:2px
+    style L fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
 ```
 
 ## Usage
@@ -68,6 +72,15 @@ biomedical-skills install computational-pathology
 | Tile-level splits | Tiles from one slide are near-duplicates. Split by **patient**, hold out a **site** |
 | Attention weights | Not explanations. Unstable across seeds; report as hypotheses |
 | Background tiles in a bag | Attention is a softmax, so background **dilutes** weight on informative tiles |
+| `pip install stardist` | No deep-learning backend. TensorFlow comes via `csbdeep[tf]`; a bare install fails at `predict`, not install |
+| StarDist input norm | Expects `csbdeep.utils.normalize` (percentile), not a 0–1 rescale |
+| HoVer-Net | **git-only**, MIT, last pushed 2023-10. Cell types come from its training panel |
+| Segmentation scale | Nuclei need ~0.25 µm/px. Report cells per **mm²**, not per tile |
+| TLS ≠ lymphocyte-rich tile | Diffuse infiltration and an organised follicle differ in **organisation**, not count |
+| Ripley over bounding box | CSR over a half-glass rectangle reports the tissue outline as clustering. Mask to tissue |
+| squidpy | Spatial stats, but **Python ≥ 3.12** |
+| Cells matched to spots | Adjacent sections don't share cells one-to-one. Integrate at the **region** level |
+| Morphology vs expression | Tracks tumour **purity**, which drives bulk expression. Adjust for purity |
 
 ## Foundation models: access and licence, verified 2026-08
 
@@ -142,3 +155,7 @@ pip install openslide-python openslide-bin
 | Slide pipeline | `mahmoodlab/TRIDENT` | active (pushed 2026-08); **install from git, not PyPI** |
 | MIL | `CLAM` / `DSMIL` / `TransMIL` | GPL-3.0 / MIT / **no licence declared** |
 | Generic deep MIL | `torchmil` 1.0.2 | on PyPI |
+| Nucleus segmentation (H&E) | `stardist` 0.9.2 | ships `2D_versatile_he`; needs `csbdeep[tf]` |
+| Nuclei + cell type | `hover_net` | **git-only**, MIT, last pushed 2023-10 |
+| Generalist segmentation | `cellpose` 4.2.1.1 / `instanseg-torch` 0.1.1 | maintained |
+| Spatial statistics | `squidpy` 1.8.3 / `pointpats` 2.6.0 | maintained; Python ≥ 3.12 |

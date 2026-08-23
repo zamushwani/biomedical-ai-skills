@@ -1,6 +1,6 @@
 # Computational Pathology
 
-Whole-slide image processing and slide-level modelling for cancer histopathology. Covers reading vendor formats with OpenSlide, the coordinate and resolution semantics that cause most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, and multiple instance learning for slide-level prediction.
+Whole-slide image processing and slide-level modelling for cancer histopathology. Covers reading vendor formats with OpenSlide, the coordinate and resolution semantics that cause most WSI bugs, tissue detection, tile extraction, stain normalization, H&E colour deconvolution, pathology foundation models as tile encoders, multiple instance learning for slide-level prediction, cell segmentation and classification, spatial statistics on cell positions, and integration with molecular data.
 
 ## When to Use This Skill
 
@@ -16,6 +16,10 @@ Activate when the user requests:
 - Multiple instance learning with CLAM, DSMIL, TransMIL or attention pooling
 - Slide-level prediction from tile features
 - Splitting a pathology cohort without leakage
+- Cell or nucleus segmentation (StarDist, HoVer-Net, Cellpose, InstanSeg)
+- Tumour region or tertiary lymphoid structure detection
+- Spatial statistics on segmented cell positions
+- Correlating morphology with matched expression or mutation data
 
 ## Inputs
 
@@ -59,6 +63,12 @@ mix the two in one environment.
 | `HistomicsTK` | 1.4.0 | stain deconvolution, maintained (pushed 2026-08) |
 | `torchstain` | 1.4.1 | Macenko and Reinhard normalization on tensors |
 | `staintools` | 2.1.2 | **abandoned.** Last release 2019-04-11, GitHub archived 2021-05-08 |
+| `stardist` | 0.9.2 | H&E nuclei model; needs a TF backend via `csbdeep[tf]` |
+| `hover_net` | git only | nuclei + cell type; MIT; last pushed 2023-10 |
+| `cellpose` | 4.2.1.1 | generalist cell segmentation |
+| `instanseg-torch` | 0.1.1 | newer PyTorch nucleus/cell segmentation |
+| `squidpy` | 1.8.3 | spatial statistics; **Python >= 3.12** |
+| `pointpats` | 2.6.0 | point-pattern statistics on plain coordinates |
 
 Use `torchstain` or `HistomicsTK` instead of `staintools`. Tutorials still recommend it; it has been archived for five years.
 
@@ -504,6 +514,186 @@ pathologist would accept, and they are unstable across seeds. Show them as a
 hypothesis to review, and report agreement with annotation when you have it.
 ```
 
+## Cell Segmentation
+
+Slide- and tile-level embeddings are one route; the other is to segment individual cells and reason about their positions and types. The two answer different questions, and the second needs the tissue at high resolution.
+
+```
+Segment at the RIGHT magnification. Nuclear segmentation needs ~0.25 um/px
+(nominal 40x). Run it on a 20x or downsampled tile and small nuclei merge
+or vanish. This is the mpp discipline from the reading section, now
+load-bearing: the wrong scale silently changes the cell count.
+```
+
+### Tool choice
+
+| Tool | Install | Output | Note |
+|---|---|---|---|
+| StarDist | `pip install stardist` | star-convex nuclei | ships an H&E model; needs a TF backend |
+| HoVer-Net | **git clone**, not PyPI | nuclei + type | classifies cell type; heavier; stale |
+| Cellpose | `pip install cellpose` 4.2 | general cells | strong generalist, not H&E-specific |
+| InstanSeg | `pip install instanseg-torch` | nuclei/cells | newer, fast, PyTorch |
+| TIAToolbox | `pip install tiatoolbox` | wraps several | maintained, integrates with the WSI reader |
+
+### StarDist for H&E nuclei
+
+```python
+from stardist.models import StarDist2D
+from csbdeep.utils import normalize
+
+model = StarDist2D.from_pretrained("2D_versatile_he")   # H&E nuclei model
+labels, details = model.predict_instances(normalize(tile))
+```
+
+```
+`pip install stardist` DOES NOT install a deep-learning backend. StarDist
+runs on TensorFlow through csbdeep, which pulls it only via the csbdeep[tf]
+extra. A bare install imports fine and then fails at model.predict with a
+missing-backend error, not at install. Install the backend explicitly.
+
+Normalize with csbdeep.utils.normalize (a percentile normalization), not a
+0-1 rescale. The pretrained model was trained on percentile-normalized input;
+feeding it raw or min-max-scaled tiles degrades segmentation silently.
+
+The `2D_versatile_he` model is trained for H&E. Do not use `2D_versatile_fluo`
+on brightfield; it expects fluorescence and will undersegment.
+```
+
+### HoVer-Net when you need cell TYPES
+
+```
+HoVer-Net segments AND classifies (epithelial, inflammatory, connective,
+etc.), which StarDist's versatile model does not. It is not on PyPI: install
+from the git repository (MIT licensed). The repository was last updated
+2023-10, so pin your environment and expect dependency friction with current
+PyTorch.
+
+Its cell types come from the training panel (PanNuke, CoNSeP, MoNuSAC).
+Those are the classes you get, and they may not match your tumour type.
+A "connective" class trained on colorectal tissue is not a validated label
+on a lymph node.
+```
+
+### Segmentation is not free of the same traps
+
+```
+Report cells per mm^2, not cells per tile. Tile size in microns varies with
+mpp, so a raw count per tile is not comparable across slides or scanners.
+
+Boundary double-counting: a nucleus straddling two tiles is segmented in
+both. Deduplicate on the stitched coordinates, or segment with overlap and
+keep only cells whose centroid falls in the tile interior.
+
+Validate against a counted region. Segmentation F1 on a held-out annotated
+patch is the number to report, per cell type where the model classifies.
+"It looks right" is not validation.
+```
+
+## Region and Structure Detection
+
+### Tumour region
+
+```
+Two routes:
+  Supervised     a tile classifier (tumour vs stroma vs necrosis vs normal)
+                 trained on pathologist annotation, then applied per tile.
+  Foundation     cluster the tile embeddings from the encoder; label the
+                 clusters against a few annotated regions.
+
+The supervised route needs annotation, which is expensive; the foundation
+route needs far less but gives regions defined by embedding similarity, not
+by a pathologist's category. State which, because a reviewer will ask whether
+"tumour region" means annotated tumour or a cluster you called tumour.
+```
+
+### Tertiary lymphoid structures
+
+```
+TLS are dense aggregates of lymphocytes, sometimes with a germinal centre,
+and they carry prognostic and immunotherapy-response signal. Detecting them
+is a density-and-organisation problem, not a single-cell one:
+
+  1. segment and classify cells (lymphocytes specifically)
+  2. find dense lymphocyte aggregates (density threshold or clustering)
+  3. distinguish a true TLS from diffuse infiltration by size and compactness
+
+A lymphocyte-rich tile is not a TLS. Diffuse infiltration and an organised
+follicle look similar in aggregate counts and differ in spatial
+organisation, which is exactly what the spatial statistics below measure.
+Maturity (germinal-centre presence) needs additional markers and is not
+callable from H&E alone with confidence.
+```
+
+## Spatial Statistics on Cell Positions
+
+Once cells have positions and types, the questions become spatial: are two cell types closer than chance, does a type cluster, how does density vary with distance.
+
+```python
+import squidpy as sq       # 1.8.3, Python >= 3.12
+
+# adata: cells as observations, with spatial coords and a cell-type column
+sq.gr.spatial_neighbors(adata, coord_type="generic", delaunay=True)
+sq.gr.nhood_enrichment(adata, cluster_key="cell_type")     # who neighbours whom
+sq.gr.co_occurrence(adata, cluster_key="cell_type")        # co-occurrence vs distance
+sq.gr.ripley(adata, cluster_key="cell_type", mode="L")     # clustering vs dispersion
+```
+
+```
+squidpy needs Python >= 3.12 (verified 2026-08). It is built for spatial
+transcriptomics, but cell positions from a segmented WSI fit its data model:
+put centroids in adata.obsm["spatial"] and the cell type in adata.obs.
+
+Ripley's K (and its variance-stabilised L) tests clustering against complete
+spatial randomness. Two failure modes:
+  - the study region must be the TISSUE, not the slide bounding box. CSR
+    over a rectangle that is half glass reports clustering that is just the
+    tissue outline. Mask to tissue and use an edge correction.
+  - it assumes homogeneity. Tissue is not homogeneous, so significant
+    "clustering" often just reflects that cells live where tissue is. An
+    inhomogeneous null or a within-region analysis is the honest comparison.
+
+nhood_enrichment permutes cluster labels on a fixed graph, so its null is
+"same graph, shuffled types". That controls for cell density but not for
+tissue architecture. Read its z-scores as relative, and do not compare them
+across slides with different graphs.
+```
+
+```
+Point-pattern tooling if you are not in the squidpy/anndata world:
+  pointpats 2.6.0   Ripley, quadrat, and nearest-neighbour statistics on
+                    plain coordinate arrays. Python >= 3.12.
+```
+
+## Integration With Molecular Data
+
+The payoff is usually correlating morphology with molecular measurements on the same tumour.
+
+```
+The registration question decides what is possible:
+
+  SAME section       H&E and spatial transcriptomics on one slide (Visium,
+                     Xenium). Coordinates are directly registrable; this is
+                     the tightest link. See the spatial-transcriptomics skill.
+  ADJACENT section   H&E and a molecular assay on serial cuts. Cells do NOT
+                     correspond one-to-one; a cell in one section is not in
+                     the next. Integrate at the REGION level, not the cell.
+  SAME case, bulk    slide-level features vs bulk RNA-seq or mutation. No
+                     spatial correspondence at all; correlate summaries.
+
+Matching a per-cell H&E label to a per-spot expression value across adjacent
+sections is a common and invalid shortcut. State the registration level and
+integrate at the coarsest one the data honestly supports.
+```
+
+```
+Confounds specific to this integration:
+  - Slide-level morphology features correlate with tumour purity, and purity
+    drives bulk expression. A "morphology predicts expression" result is
+    often morphology predicts purity predicts expression. Adjust for purity.
+  - Scanner and stain, again: if morphology and molecular data were generated
+    at different sites, site is a confounder for both.
+```
+
 ## Output Specification
 
 | Output | Format | Description |
@@ -518,6 +708,10 @@ hypothesis to review, and report agreement with annotation when you have it.
 | `encoder_manifest.json` | JSON | model id, revision, embedding dim, transform config |
 | `splits.csv` | CSV | slide and patient assignment per fold, with site where known |
 | `attention.h5` | HDF5 | per-tile attention weights, stored as hypotheses not explanations |
+| `cells.parquet` | Parquet | per-cell centroid (level-0), type, and source tile |
+| `cell_density.csv` | CSV | cells per mm² by type and region |
+| `spatial_stats.csv` | CSV | Ripley/co-occurrence/enrichment with the null stated |
+| `regions.geojson` | GeoJSON | tumour, stroma, TLS regions with how each was defined |
 
 Name tiles by their **level 0** coordinates and record the level and mpp beside them. A tile named by level-2 coordinates cannot be located on the slide without knowing which level produced it.
 
@@ -554,6 +748,22 @@ Multiple instance learning
   Bag construction stated: all tiles, or a subsample of fixed size.
   Attention weights presented as hypotheses, with annotation agreement
   where annotation exists.
+
+Cell analysis
+  Segmentation run at ~0.25 um/px; counts reported per mm², not per tile.
+  Boundary cells deduplicated on stitched coordinates.
+  Segmentation validated against a counted region, per type where classified.
+  TLS distinguished from diffuse infiltration by organisation, not count.
+
+Spatial statistics
+  Study region masked to tissue, not the slide bounding box.
+  Ripley/CSR inhomogeneity acknowledged; within-region or inhomogeneous null.
+  Enrichment z-scores treated as relative, not compared across graphs.
+
+Molecular integration
+  Registration level stated (same section, adjacent, or bulk).
+  Cell-to-spot matching not claimed across adjacent sections.
+  Tumour purity adjusted for when correlating morphology with bulk expression.
 
 Reproducibility
   Slide manifest records vendor and mpp per slide, so scanner effects can
@@ -603,6 +813,23 @@ Reproducibility
 28. **Omitting the mean-pooling baseline**: attention MIL that does not beat mean-pooled embeddings with logistic regression has not earned its complexity.
 29. **Presenting attention weights as explanations**: they show what pooling up-weighted, are unstable across seeds, and are not evidence a pathologist would accept. Report them as hypotheses, with annotation agreement where it exists.
 30. **Leaving background tiles in the bag**: attention is a softmax over instances, so background tiles mathematically dilute the weight on informative ones. Tissue filtering changes the optimisation, not just the runtime.
+
+### Cell analysis
+31. **Segmenting at the wrong magnification**: nuclear segmentation needs ~0.25 µm/px. Run it downsampled and small nuclei merge or vanish, silently changing the count.
+32. **`pip install stardist` and expecting it to run**: it has no deep-learning backend. TensorFlow comes only via `csbdeep[tf]`, so a bare install fails at `predict`, not at install.
+33. **Normalizing StarDist input with a 0–1 rescale**: the pretrained model expects `csbdeep.utils.normalize` percentile normalization. Min-max scaling degrades segmentation silently.
+34. **Expecting HoVer-Net from PyPI**: it is git-only, MIT, and last updated 2023-10. Its cell types come from its training panel and may not transfer to your tumour type.
+35. **Reporting cells per tile**: tile area in microns varies with mpp. Report cells per mm². Deduplicate nuclei that straddle tile boundaries.
+36. **Calling a lymphocyte-rich tile a TLS**: diffuse infiltration and an organised follicle have similar counts and different spatial organisation. Distinguish by size and compactness, not density alone.
+
+### Spatial statistics
+37. **Running Ripley's K over the slide bounding box**: CSR over a rectangle that is half glass reports the tissue outline as clustering. Mask to tissue and edge-correct.
+38. **Ignoring tissue inhomogeneity**: Ripley assumes homogeneity, so "clustering" often just means cells live where tissue is. Use a within-region analysis or an inhomogeneous null.
+39. **Comparing `nhood_enrichment` z-scores across slides**: its null is the shuffled labels on that slide's graph. Different graphs are not comparable.
+
+### Molecular integration
+40. **Matching cells to spots across adjacent sections**: serial cuts do not share cells one-to-one. Integrate at the region level, and state the registration level explicitly.
+41. **Reading morphology-expression correlation as biology**: slide morphology tracks tumour purity, and purity drives bulk expression. Adjust for purity before claiming a direct link.
 
 ## Related Skills
 
