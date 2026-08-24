@@ -1,6 +1,6 @@
 # Biomedical MCP Servers
 
-Building Model Context Protocol servers that give AI agents structured, tested access to biomedical databases. Covers MCP server design, the GDC REST API behind TCGA, tool design for search and retrieval, pagination and caching, and the data-shape traps that make a naive wrapper wrong. Part 1 covers TCGA/GDC and Part 2 adds GEO; biomarker databases follow.
+Building Model Context Protocol servers that give AI agents structured, tested access to biomedical databases. Covers MCP server design, the GDC REST API behind TCGA, tool design for search and retrieval, pagination and caching, and the data-shape traps that make a naive wrapper wrong. Part 1 covers TCGA/GDC, Part 2 adds GEO, and Part 3 aggregates the CIViC, OncoKB and ClinVar biomarker databases.
 
 ## When to Use This Skill
 
@@ -13,6 +13,8 @@ Activate when the user requests:
 - Pagination, caching, or rate-limit handling for a genomics API
 - GEO dataset search, Series Matrix retrieval, or probe-to-gene mapping
 - Handling NCBI E-utilities rate limits and API keys
+- Aggregating CIViC, OncoKB, or ClinVar for variant clinical significance
+- Reconciling variant nomenclature or evidence levels across databases
 
 ## Inputs
 
@@ -397,6 +399,146 @@ For a Python server, GEOparse or a direct FTP fetch is the clean route.
 Reserve GEOquery for reproducing an existing R analysis.
 ```
 
+## Biomarker Databases: CIViC, OncoKB, ClinVar
+
+Aggregating clinical variant knowledge is the hardest of the three, because the sources disagree on access, on nomenclature, and on what "evidence" even means. An aggregator that treats them uniformly produces a merged answer that is wrong in ways the agent cannot see.
+
+### Three databases, three access models
+
+```
+CIViC     open GraphQL at civicdb.org/api/graphql. No auth. Community-curated
+          clinical evidence. HTTP 200 anonymously.
+OncoKB    REST at oncokb.org/api/v1. REQUIRES a token. Anonymous requests to
+          data endpoints return HTTP 401. The token is free for research after
+          registration, but OncoKB is NON-COMMERCIAL: clinical or commercial
+          use needs a paid licence. /api/v1/info is open (data version only).
+ClinVar   NCBI E-utilities, db=clinvar. Open, same rate limits as GEO.
+
+You cannot build one uniform client. The OncoKB token gates it, and a server
+that hard-fails when the token is absent takes down CIViC and ClinVar with it.
+Degrade: return what the open sources give, and mark OncoKB as unavailable
+rather than erroring the whole query.
+```
+
+```python
+import os, httpx
+
+@mcp.tool()
+def biomarker_search_variant(gene: str, variant: str) -> dict:
+    """Search CIViC, ClinVar, and (if a token is set) OncoKB for a variant.
+
+    Returns per-source results. OncoKB is included only when ONCOKB_TOKEN is
+    set; otherwise it is marked unavailable, not an error.
+    """
+    out = {"gene": gene, "variant": variant, "sources": {}}
+    # CIViC (open GraphQL) - evidence lives on molecular profiles, see below
+    q = ('{ browseVariants(featureName: "%s", variantName: "%s", first: 5) '
+         '{ nodes { name id evidenceItemCount therapies { name } } } }' % (gene, variant))
+    r = httpx.post("https://civicdb.org/api/graphql", json={"query": q}, timeout=30)
+    out["sources"]["civic"] = r.json().get("data", {}).get("browseVariants", {}).get("nodes", [])
+    # OncoKB (token-gated) - degrade if absent
+    token = os.environ.get("ONCOKB_TOKEN")
+    if token:
+        o = httpx.get("https://www.oncokb.org/api/v1/annotate/mutations/byProteinChange",
+                      params={"hugoSymbol": gene, "alteration": variant},
+                      headers={"Authorization": f"Bearer {token}"}, timeout=30)
+        out["sources"]["oncokb"] = o.json() if o.status_code == 200 else {"error": o.status_code}
+    else:
+        out["sources"]["oncokb"] = {"unavailable": "set ONCOKB_TOKEN (non-commercial licence)"}
+    return out
+```
+
+### CIViC evidence lives on the molecular profile
+
+```
+Evidence in CIViC attaches to a MOLECULAR PROFILE, not a variant. A profile
+wraps one or more variants to express conditions like "BRAF V600E AND NOT
+KRAS G12D". The evidenceItems(variantId:) filter is a convenience that
+returns the same counts as the profile path for a SIMPLE variant (verified:
+12 BRAF variants agreed exactly across both paths). What it cannot express is
+the profile CONTEXT.
+
+Go through the profile when the context matters:
+
+  molecularProfiles(variantId: X) { nodes { name
+    evidenceItems { nodes { evidenceType evidenceLevel significance
+                            therapies { name } disease { name } } } } }
+
+Two things this buys you that evidenceItems(variantId:) alone does not:
+  - the profile NAME, so a piece of evidence for "V600E AND NOT NRAS" is not
+    reported as plain V600E evidence, dropping the condition.
+  - compound profiles, where a variant only participates jointly. Verified:
+    BRAF V600E's evidence is PREDICTIVE / level B / SENSITIVITYRESPONSE /
+    Dabrafenib, reached through its molecular profile.
+
+A variant with genuinely no curation returns zero by BOTH paths; that is
+"no evidence", not a query bug. Do not mistake the two.
+```
+
+### Nomenclature does not match across sources
+
+```
+The same variant is written three ways:
+  CIViC     V600E
+  OncoKB    V600E
+  ClinVar   NM_004333.6(BRAF):c.1799T>A (p.Val600Glu)
+
+String-matching across sources silently misses. ClinVar is keyed on HGVS
+expressions and RCV/VCV accessions, not protein shorthand. Search ClinVar by
+gene + protein change as a term, then reconcile on genomic coordinates or
+HGVS, not on the display name. Report which identifier each hit was matched
+on, so a wrong match is visible.
+```
+
+### Evidence scales are not the same scale
+
+```
+CIViC     evidence levels A-E (A = validated, E = inferential)
+OncoKB    therapeutic levels 1, 2, 3A, 3B, 4, R1, R2
+ClinVar   review status as 0-4 gold stars, plus a classification
+
+These do NOT map onto one another. Merging them into a single "confidence"
+number invents a ranking that no source endorses. Keep them separate,
+labelled by source, and let the reader weigh them. If you must order results,
+order within a source, never across.
+```
+
+### ClinVar germline is not somatic actionability
+
+```
+ClinVar's classification is predominantly GERMLINE pathogenicity (does this
+inherited variant cause disease). That is a different axis from somatic
+oncogenicity and from clinical actionability, which is what OncoKB and CIViC
+speak to. A ClinVar "Pathogenic" is not a statement that a drug is indicated.
+ClinVar's newer somatic classifications are a separate field; do not read the
+germline one as therapeutic. See the variant-annotation skill for the three
+frameworks.
+```
+
+```python
+@mcp.tool()
+def biomarker_get_clinvar(gene: str, protein_change: str) -> dict:
+    """ClinVar records for a variant, with germline classification.
+
+    The classification is GERMLINE pathogenicity, not somatic actionability.
+    """
+    import urllib.parse
+    eutils = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+    s = httpx.get(f"{eutils}/esearch.fcgi", params={
+        "db": "clinvar", "term": f"{gene}[gene] AND {protein_change}",
+        "retmode": "json", "tool": "biomedical-mcp", "email": "you@example.org"}, timeout=30)
+    ids = s.json()["esearchresult"]["idlist"]
+    if not ids:
+        return {"gene": gene, "variant": protein_change, "records": []}
+    d = httpx.get(f"{eutils}/esummary.fcgi", params={
+        "db": "clinvar", "id": ",".join(ids[:20]), "retmode": "json",
+        "tool": "biomedical-mcp", "email": "you@example.org"}, timeout=30)
+    res = d.json()["result"]
+    return {"records": [{"title": res[u].get("title"),
+                         "germline_classification": res[u].get("germline_classification")}
+                        for u in res if u != "uids"]}
+```
+
 ## Running the Server
 
 ```bash
@@ -421,6 +563,7 @@ proxies controlled-access data without auth in front of it.
 | `mcp_config` | JSON | the agent-side registration (command or URL) |
 | `expression.tsv` | TSV | parsed GEO Series Matrix, probe rows |
 | `probe_map.tsv` | TSV | GPL probe-to-gene mapping, cached per platform |
+| biomarker results | JSON dict | per-source hits, with the matched identifier and source labelled |
 
 Every list-returning tool returns the pagination `total` beside the page, so the agent knows whether more data exists.
 
@@ -445,6 +588,14 @@ GEO specifics
   Probe rows mapped to genes through the GPL table, with the collapse
   method stated.
   RNA-seq empty-table case detected and routed to supplementary files.
+
+Biomarker aggregation
+  OncoKB token read from the environment; absence degrades, not errors.
+  CIViC evidence fetched via molecularProfiles, not evidenceItems(variantId:).
+  Cross-source matches reconciled on HGVS/coordinates, with the matched
+  identifier reported.
+  Evidence levels kept per-source, not merged into one scale.
+  ClinVar germline classification not presented as somatic actionability.
 
 Robustness
   Non-200 responses handled, not assumed away.
@@ -483,10 +634,18 @@ Robustness
 19. **Ignoring NCBI rate limits**: E-utilities is 3 requests/second without an API key, 10 with. Pass `tool=` and `email=`, register a key, and back off on 429.
 20. **Wrapping GEOquery from Python**: it is R. Use GEOparse or geofetch, or fetch the Series Matrix from the FTP directly.
 
+### Biomarker databases
+21. **Building one uniform client for CIViC, OncoKB and ClinVar**: they differ on access (open GraphQL, token-gated REST, open E-utilities). A server that hard-fails without the OncoKB token takes down the open sources too. Degrade and mark OncoKB unavailable.
+22. **Reporting CIViC evidence without its molecular-profile context**: evidence attaches to a profile that may combine variants ("V600E AND NOT NRAS"). `evidenceItems(variantId:)` gives the right counts for a simple variant but drops the condition. Go through `molecularProfiles(variantId:)` and keep the profile name, or you report conditional evidence as unconditional.
+23. **String-matching a variant across sources**: CIViC and OncoKB use `V600E`; ClinVar uses `NM_004333.6(BRAF):c.1799T>A (p.Val600Glu)`. Reconcile on HGVS or coordinates and report which identifier matched, not on the display name.
+24. **Merging evidence levels into one scale**: CIViC A–E, OncoKB 1–4/R1–R2, and ClinVar's gold stars do not map onto each other. Keep them separate and labelled by source; order within a source, never across.
+25. **Reading a ClinVar germline classification as somatic actionability**: ClinVar is predominantly germline pathogenicity, a different axis from therapeutic actionability. A germline "Pathogenic" is not a drug indication.
+26. **Committing the OncoKB token**: it is per-user and OncoKB is non-commercial. Read it from the environment, never hardcode it, and keep clinical/commercial use behind the appropriate licence.
+
 ## Related Skills
 
 - [`cancer-multiomics`](../cancer-multiomics/SKILL.md): the TCGA analysis these tools feed
-- [`variant-annotation`](../variant-annotation/SKILL.md): interpreting the mutations the mutation tool returns
+- [`variant-annotation`](../variant-annotation/SKILL.md): the three clinical frameworks (germline pathogenicity, somatic oncogenicity, clinical actionability) that CIViC, OncoKB and ClinVar each speak to differently
 - [`survival-analysis`](../survival-analysis/SKILL.md): consumes the clinical data the clinical tool returns
 
 ## Public Datasets for Testing
@@ -499,3 +658,6 @@ Robustness
 | TCGA-LUAD | Lung adenocarcinoma, a small worked cohort | open |
 | GEO `gds` database | ~1.7M+ records via E-utilities | open, no auth |
 | GSE2034 | Breast cancer, Affymetrix GPL96, 22,283 probes | open, FTP Series Matrix |
+| CIViC GraphQL | Community-curated clinical evidence | open, civicdb.org/api/graphql |
+| ClinVar (`db=clinvar`) | Germline and somatic classifications | open, E-utilities |
+| OncoKB | Precision oncology actionability | token; free for research, non-commercial |

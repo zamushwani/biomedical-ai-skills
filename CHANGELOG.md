@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-08-24
+
+### Added
+- biomedical-mcp (part 3, biomarker databases): aggregating CIViC, OncoKB and ClinVar for variant clinical significance, with the access, nomenclature and evidence-scale mismatches that make a naive aggregator wrong. All biomarker tool bodies executed against the live APIs, six checks passing
+- Records the three access models: CIViC is open GraphQL, OncoKB is token-gated REST (401 without a token, non-commercial licence), and ClinVar is open E-utilities, so a server that hard-fails without the OncoKB token must degrade rather than take down the open sources
+- Records that CIViC evidence attaches to a molecular profile rather than a variant, that cross-source variant nomenclature does not match (V600E vs NM_004333.6(BRAF):c.1799T>A), that CIViC A-E, OncoKB 1-4/R1-R2 and ClinVar gold stars are not one scale, and that a ClinVar germline classification is not somatic actionability
+
+### Fixed
+- biomedical-mcp: an earlier draft of the CIViC section claimed `evidenceItems(variantId:)` returns zero and that evidence is reachable only through the molecular profile. Verified against the live API, the two paths agree for simple variants (12/12 BRAF variants); the correct reason to use the molecular profile is to keep the compound-condition context, and a variant with no curation returns zero by both paths. The claim was corrected before release
+
 ## [0.7.1] - 2026-08-23
 
 ### Added
@@ -171,7 +181,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.2...v0.6.3

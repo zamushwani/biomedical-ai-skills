@@ -1,8 +1,8 @@
 # biomedical-mcp
 
-Building Model Context Protocol servers that give AI agents structured, tested access to biomedical databases: MCP tool design, the GDC REST API behind TCGA, GEO search and Series Matrix retrieval, pagination and caching, and the data-shape traps that make a naive wrapper wrong.
+Building Model Context Protocol servers that give AI agents structured, tested access to biomedical databases: MCP tool design, the GDC REST API behind TCGA, GEO search and Series Matrix retrieval, aggregating the CIViC, OncoKB and ClinVar biomarker databases, pagination and caching, and the data-shape traps that make a naive wrapper wrong.
 
-> **Parts 1–2 of a multi-part skill.** TCGA/GDC and GEO. Biomarker databases follow.
+> **Parts 1–3 of a multi-part skill.** TCGA/GDC, GEO, and the CIViC/OncoKB/ClinVar biomarker databases.
 
 ```mermaid
 graph TD
@@ -13,6 +13,7 @@ graph TD
     A --> F["Pagination<br>from/size · total"]
     A --> G["Caching<br>keyed on data release"]
     A --> H["GEO<br>E-utilities · Series Matrix · GPL"]
+    A --> I["Biomarkers<br>CIViC · OncoKB · ClinVar"]
     style A fill:#1a1a2e,stroke:#00d9ff,color:#fff,stroke-width:2px
     style B fill:#1a1a2e,stroke:#4ecdc4,color:#fff,stroke-width:2px
     style C fill:#1a1a2e,stroke:#ff6b6b,color:#fff,stroke-width:2px
@@ -21,6 +22,7 @@ graph TD
     style F fill:#1a1a2e,stroke:#276DC3,color:#fff,stroke-width:2px
     style G fill:#1a1a2e,stroke:#f39c12,color:#fff,stroke-width:2px
     style H fill:#1a1a2e,stroke:#9b59b6,color:#fff,stroke-width:2px
+    style I fill:#1a1a2e,stroke:#2ecc71,color:#fff,stroke-width:2px
 ```
 
 ## Usage
@@ -54,6 +56,12 @@ biomedical-skills install biomedical-mcp
 | Series Matrix path | Last three digits of the GSE become `nnn`: `GSE2034` → `GSE2nnn/GSE2034/matrix/` |
 | E-utilities limits | **3 req/sec** without a key, 10 with. Pass `tool=` and `email=` |
 | GEOquery | It's **R**. A Python server uses GEOparse/geofetch or the FTP directly |
+| Three biomarker DBs | **CIViC** open GraphQL, **OncoKB** token-gated REST (non-commercial, 401 without a token), **ClinVar** open E-utilities. No uniform client |
+| CIViC evidence | Attaches to a **molecular profile**, not a variant. `evidenceItems(variantId:)` agrees for simple variants but drops the compound condition — keep the profile name |
+| Variant nomenclature | `V600E` (CIViC/OncoKB) vs `NM_004333.6(BRAF):c.1799T>A (p.Val600Glu)` (ClinVar). Reconcile on HGVS/coordinates, not display names |
+| Evidence levels | CIViC A–E, OncoKB 1–4/R1–R2, ClinVar gold stars. **Not one scale** — keep per-source |
+| ClinVar classification | Predominantly **germline** pathogenicity, not somatic actionability. A germline "Pathogenic" is not a drug indication |
+| OncoKB token | Per-user, non-commercial. Read from the environment, never commit |
 
 ## Verified against the live GDC API (Data Release 46.0, 2026-08)
 
@@ -77,6 +85,18 @@ The four tool bodies in the skill were executed against the live API; all return
 
 Six GEO checks, all passing: search, summary, UID conversion, path computation, download, and parse.
 
+## Biomarker tools verified against the live CIViC, OncoKB, and ClinVar APIs (2026-08)
+
+| Check | Result |
+|---|---|
+| CIViC `browseVariants` (BRAF) | variants with `evidenceItemCount`, `therapies` |
+| CIViC evidence paths | `evidenceItems(variantId:)` agrees with `molecularProfiles` for **12/12** BRAF variants |
+| CIViC V600E evidence | PREDICTIVE / level B / SENSITIVITYRESPONSE / Dabrafenib, Trametinib (via molecular profile) |
+| OncoKB without a token | **HTTP 401** — degrade, do not crash |
+| ClinVar V600E | germline classification returned (e.g. "drug response") |
+
+Six biomarker checks, all passing. This part also **corrected an earlier draft claim**: `evidenceItems(variantId:)` does *not* universally return zero — it agrees with the molecular-profile path for simple variants. The real reason to use the profile is to keep the compound-condition context, not because the variant path is empty.
+
 ## Tool landscape (2026-08)
 
 | Use | Tool | Status |
@@ -88,3 +108,6 @@ Six GEO checks, all passing: search, summary, UID conversion, path computation, 
 | GEO search | NCBI E-utilities (`gds` db) | open; 3 req/sec, 10 with an API key |
 | GEO data (R) | `GEOquery` 2.81.x | Bioconductor; the reference implementation |
 | GEO data (Python) | `GEOparse` 2.0.4 / `geofetch` 0.12.11 | no R needed |
+| Clinical evidence | CIViC GraphQL | open, no auth |
+| Precision oncology | OncoKB REST | **token required**; free for research, non-commercial |
+| Variant classification | ClinVar (`db=clinvar`) | open, E-utilities |
