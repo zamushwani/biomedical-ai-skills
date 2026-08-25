@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-08-25
+
+### Added
+- biomedical-mcp validation tests: 27 assertions across three Python scripts, executed on 2026-08-25 with 0 failures. These are live-API integration checks that confirm the documented contracts still hold against the GDC, GEO/E-utilities, CIViC, OncoKB and ClinVar services, using urllib only and skipping cleanly when offline. **Every skill in the package now has an executed test suite.**
+- The suite confirms the GDC contracts (clinical needs `expand`, pagination is `from`/`size`, expression returns 28,315 file references rather than a matrix, `primary_site` is a list), the GEO contracts (a `gds` UID converts to a GSE accession, the Series Matrix path is computed from the last three digits, and GSE2034 parses to 22,283 probe rows), and the biomarker contracts (CIViC's two evidence paths agree for all 12 BRAF variants, V600E carries PREDICTIVE evidence via its molecular profile, OncoKB is 401 without a token, and ClinVar returns a germline classification)
+- This completes the biomedical-mcp skill and the Phase 4 MCP arc: TCGA/GDC, GEO, biomarker databases, and validation
+
 ## [0.7.2] - 2026-08-24
 
 ### Added
@@ -181,7 +188,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.6.3...v0.7.0

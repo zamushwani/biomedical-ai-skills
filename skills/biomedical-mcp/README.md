@@ -2,7 +2,7 @@
 
 Building Model Context Protocol servers that give AI agents structured, tested access to biomedical databases: MCP tool design, the GDC REST API behind TCGA, GEO search and Series Matrix retrieval, aggregating the CIViC, OncoKB and ClinVar biomarker databases, pagination and caching, and the data-shape traps that make a naive wrapper wrong.
 
-> **Parts 1–3 of a multi-part skill.** TCGA/GDC, GEO, and the CIViC/OncoKB/ClinVar biomarker databases.
+> **Complete skill**, validated. TCGA/GDC, GEO, the CIViC/OncoKB/ClinVar biomarker databases, and a live-API integration suite.
 
 ```mermaid
 graph TD
@@ -84,6 +84,22 @@ The four tool bodies in the skill were executed against the live API; all return
 | parse GSE2034 array matrix | **22,283 probe rows**, first probe `1007_s_at` |
 
 Six GEO checks, all passing: search, summary, UID conversion, path computation, download, and parse.
+
+## Validation
+
+Tests in [`tests/`](tests/) are live-API integration checks: they confirm the documented contracts still hold against the GDC, GEO/E-utilities, CIViC, OncoKB and ClinVar services, so the tool code stays correct as those APIs evolve. `urllib` only, no dependency; each suite skips cleanly offline.
+
+**Executed 2026-08-25: 27 assertions, 0 failures** (Python 3.13.5, GDC Data Release 46.0).
+
+```bash
+cd tests && python run_all.py
+```
+
+| Suite | Assertions | Confirms |
+|---|---|---|
+| gdc | 11 | `expand` required for clinical, `from`/`size` pagination, expression is file references, `primary_site` is a list |
+| geo | 8 | UID→accession, Series Matrix path rule, array matrix is a probe-indexed value table |
+| biomarker | 8 | CIViC evidence paths agree 12/12, V600E PREDICTIVE via molecular profile, OncoKB 401 without a token, ClinVar germline classification |
 
 ## Biomarker tools verified against the live CIViC, OncoKB, and ClinVar APIs (2026-08)
 
