@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-26
+
+### Added
+- Prompt library: ten Claude Code slash commands in `.claude/commands/` that run the repository's protocols, covering nine of the twelve published skills. Each command carries its skill's pitfalls inline, so the protocol travels with the prompt rather than depending on the skill being loaded
+- `/analyze-degs`, `/run-gsea`, `/plot-survival`, `/annotate-variants`, `/deconvolve-immune`, `/qc-single-cell`, `/analyze-spatial`, `/fit-dose-response`, `/tile-wsi`, `/query-tcga`
+- `.claude/validate_commands.py`, a validator run this session with 13 assertions and 0 failures. It checks frontmatter against the fields Claude Code actually supports, confirms each command points at a skill that is published (via `git ls-files`, not merely present on disk), and catches the argument-numbering trap where `$0` is the first argument and `$1` the second, the opposite of the shell convention
+- The commands ship with the source distribution
+
 ## [0.7.3] - 2026-08-25
 
 ### Added
@@ -188,7 +196,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.0...v0.7.1

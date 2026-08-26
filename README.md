@@ -41,6 +41,32 @@ SKILL.md files for cancer bioinformatics. Drop one into your project and your AI
 | [`biomedical-mcp`](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/biomedical-mcp/) | Building [Model Context Protocol](https://modelcontextprotocol.io/) servers that give AI agents tested access to biomedical databases — MCP tool design ([mcp](https://pypi.org/project/mcp/) 2.0), the [GDC REST API](https://api.gdc.cancer.gov/) behind TCGA (projects, mutations, clinical), [GEO](https://www.ncbi.nlm.nih.gov/geo/) search and Series Matrix retrieval, aggregating the [CIViC](https://civicdb.org/), [OncoKB](https://www.oncokb.org/) and [ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/) biomarker databases, pagination and caching, and the data-shape traps (GDC expression is file references, GEO rows are probes not genes, CIViC evidence lives on molecular profiles, OncoKB is token-gated, cross-source nomenclature does not match) | [validated](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/biomedical-mcp/tests/) |
 | [`meta-analysis`](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/meta-analysis/) | Systematic review from protocol to synthesis — PROSPERO pre-specification, PICO search construction (MeSH, Emtree, [Cochrane CHSSS](https://training.cochrane.org/handbook)), deduplication ([synthesisr](https://cran.r-project.org/package=synthesisr)), two-reviewer screening with [kappa](https://cran.r-project.org/package=irr), [PRISMA 2020](https://www.prisma-statement.org/) flow diagrams, data extraction, risk of bias ([RoB 2](https://www.riskofbias.info/), ROBINS-I, ROBINS-E, [robvis](https://cran.r-project.org/package=robvis)), pooling with [metafor](https://cran.r-project.org/package=metafor) (REML, Knapp-Hartung, prediction intervals), subgroup analysis, meta-regression, small-study effects, network meta-analysis ([netmeta](https://cran.r-project.org/package=netmeta), transitivity, inconsistency, rankings) and GRADE/CINeMA certainty | [BCG](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/meta-analysis/tests/) |
 
+## Slash commands
+
+Ten Claude Code slash commands that run the protocols above. Clone the repo and they work immediately — commands live in `.claude/commands/`, which Claude Code picks up per project.
+
+| Command | Arguments | Skill it follows |
+|---|---|---|
+| [`/analyze-degs`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/analyze-degs.md) | `[counts-file] [condition-column]` | cancer-multiomics |
+| [`/run-gsea`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/run-gsea.md) | `[de-results-file] [gene-set-collection]` | cancer-multiomics |
+| [`/plot-survival`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/plot-survival.md) | `[clinical-file] [group-column]` | survival-analysis |
+| [`/annotate-variants`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/annotate-variants.md) | `[vcf-file] [tumour-type]` | variant-annotation |
+| [`/deconvolve-immune`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/deconvolve-immune.md) | `[expression-file] [method]` | immune-deconvolution |
+| [`/qc-single-cell`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/qc-single-cell.md) | `[h5ad-file]` | single-cell-atlas |
+| [`/analyze-spatial`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/analyze-spatial.md) | `[data-path] [platform]` | spatial-transcriptomics |
+| [`/fit-dose-response`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/fit-dose-response.md) | `[data-file]` | drug-response |
+| [`/tile-wsi`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/tile-wsi.md) | `[slide-path] [target-mpp]` | computational-pathology |
+| [`/query-tcga`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.claude/commands/query-tcga.md) | `[project-id] [gene]` | biomedical-mcp |
+
+```
+/annotate-variants sample.vcf melanoma
+/plot-survival clinical.tsv IDH_status
+/tile-wsi slide.svs 0.5
+```
+
+Each command carries the pitfalls from its skill inline, so the protocol travels with the prompt rather than depending on the skill being loaded. Arguments are optional — a command invoked bare asks for what it needs.
+
+
 ## Quick start
 
 ```bash

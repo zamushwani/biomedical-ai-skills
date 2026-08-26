@@ -65,3 +65,6 @@ drafts/
 
 # R plot artifacts from running test suites
 Rplots.pdf
+
+# Claude Code local settings (personal, never commit)
+.claude/settings.local.json
