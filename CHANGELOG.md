@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-26
+
+### Added
+- Phase 4 integration: an audit confirming every cross-link between skills resolves, every published skill carries a SKILL.md, a README and tests, the root README table and badge match the twelve published skills, and each skill is enumerated in all three packaging locations
+
+### Fixed
+- **The single-cell-atlas and spatial-transcriptomics suites had never been executed.** Both now run green: 37 and 56 assertions, 0 failures. The blocker was `llvmlite`, which dropped prebuilt Intel-Mac wheels after 0.45.1, so `pip install scanpy` fell back to a source build requiring `cmake`. Pinning `llvmlite==0.45.1` with `numba<0.63` resolves it
+- spatial-transcriptomics QC was computed on the wrong matrix. `visium_hne_adata()` ships log-normalized values in `.X` with true counts in `.raw`; mitochondrial percentage off `.X` is 0.92 and meaningless, while off `.raw` it is 15.7. The suite now computes QC from `.raw` and asserts that `.X` is normalized
+- spatial-transcriptomics permutation tests failed on macOS with a bare `RuntimeError`/`EOFError`. squidpy goes through joblib, which defaults to the spawn start method, so workers re-imported the test module and re-ran it. Neither `n_jobs=1` nor `JOBLIB_MULTIPROCESSING=0` prevents this; setting the start method to `fork` does
+- Both tests READMEs now record the undeclared dependencies a first run exposes: `scikit-misc` for `seurat_v3` HVG selection and `igraph`/`leidenalg` for Leiden clustering, neither of which is a scanpy dependency and both of which fail only at the call site
+
 ## [0.8.0] - 2026-08-26
 
 ### Added
@@ -196,7 +207,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.1...v0.7.2

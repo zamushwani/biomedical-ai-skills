@@ -1,3 +1,15 @@
+import multiprocessing as mp
+
+# squidpy's permutation tests go through joblib. On macOS the default start
+# method is spawn, so workers re-import this module, re-run it top to bottom,
+# and the run dies with a RuntimeError/EOFError rather than a useful message.
+# n_jobs=1 and JOBLIB_MULTIPROCESSING=0 do not prevent it; switching to fork
+# does, because fork does not re-import the parent module.
+try:
+    mp.set_start_method("fork", force=True)
+except RuntimeError:
+    pass
+
 #!/usr/bin/env python3
 """Validate spatially variable gene detection on Visium mouse brain.
 

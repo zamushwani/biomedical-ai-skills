@@ -59,3 +59,24 @@ Downloads are cached under `scanpy.settings.datasetdir` after the first run.
 - Mouse mitochondrial genes use the lowercase `mt-` prefix, not `MT-`. Using the human pattern silently returns zero MT genes.
 - squidpy 1.8.2 changed the Geary's C variance calculation, so `mode="geary"` results are not comparable across that version boundary. These tests use Moran's I only.
 - The SVG test deliberately asserts that FDR significance is a poor filter. Benchmarking found p-value calibration broken for most SVG methods, so ranking is the recommended selection.
+
+## Execution status
+
+**Executed 2026-08-26: 56 assertions, 0 failures** (Python 3.13.5, squidpy 1.8.3, scanpy 1.12.3).
+
+Running these for the first time exposed two real bugs, both now fixed:
+
+**QC was computed on the wrong matrix.** `sq.datasets.visium_hne_adata()` ships **log-normalized** values in `.X` (range 0–8.86, non-integer) with the true integer counts in `.raw` (range 0–23,703). Mitochondrial percentage computed off `.X` is 0.92 and meaningless — you cannot sum log-normalized values and call the ratio a fraction of counts. Off `.raw` it is **15.7**, comfortably inside the plausible band. The suite now computes QC from `.raw` and asserts that `.X` is normalized.
+
+**The permutation tests died on macOS.** squidpy's `spatial_autocorr` and `nhood_enrichment` go through joblib, which defaults to the **spawn** start method on macOS: workers re-import the test module, re-run it top to bottom, and the run fails with a bare `RuntimeError`/`EOFError`. Neither `n_jobs=1` nor `JOBLIB_MULTIPROCESSING=0` prevents it. Setting the start method to `fork` does, because fork does not re-import the parent module.
+
+### Installing on an Intel Mac
+
+Same `llvmlite` constraint as the single-cell suite:
+
+```bash
+pip install "llvmlite==0.45.1" "numba<0.63"
+pip install squidpy
+```
+
+The Visium dataset (~400 MB) downloads to `tests/data/` on first run and is gitignored.

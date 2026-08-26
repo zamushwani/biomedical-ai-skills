@@ -57,3 +57,18 @@ Cell type proportions: CD4 T 40-48%, CD14+ Mono 15-25%, B 8-15%, CD8 T 6-14%, NK
 - `sc.tl.leiden` still defaults to the leidenalg backend with a `FutureWarning`. Tests pin `flavor="igraph", n_iterations=2`.
 - `sce.pp.harmony_integrate` is broken against harmonypy 2.0.0, which changed `Z_corr` to cells x PCs while scanpy still transposes unconditionally. The integration test calls `harmonypy.run_harmony` directly and orients by shape.
 - `scib_metrics.kbet()` returns a tuple; only `kbet_per_label()` returns a scalar. `pcr_comparison()` needs integer codes with `categorical=True`.
+
+## Execution status
+
+**Executed 2026-08-26: 37 assertions, 0 failures** (Python 3.11.13, scanpy 1.11.5). The qc and clustering suites run; the integration suite skips unless `pertpy` is installed.
+
+### Installing on an Intel Mac
+
+`pip install scanpy` fails here because `llvmlite` (numba's backend) dropped prebuilt Intel-Mac wheels after **0.45.1**, so pip falls back to a source build that needs `cmake`. Pin it:
+
+```bash
+pip install "llvmlite==0.45.1" "numba<0.63"
+pip install scanpy scikit-misc igraph leidenalg
+```
+
+`scikit-misc` is required by `flavor="seurat_v3"` HVG selection and `igraph`/`leidenalg` by Leiden clustering. Neither is a scanpy dependency, and both fail only at the call site.

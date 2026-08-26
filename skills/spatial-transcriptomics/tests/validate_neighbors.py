@@ -1,3 +1,15 @@
+import multiprocessing as mp
+
+# squidpy's permutation tests go through joblib. On macOS the default start
+# method is spawn, so workers re-import this module, re-run it top to bottom,
+# and the run dies with a RuntimeError/EOFError rather than a useful message.
+# n_jobs=1 and JOBLIB_MULTIPROCESSING=0 do not prevent it; switching to fork
+# does, because fork does not re-import the parent module.
+try:
+    mp.set_start_method("fork", force=True)
+except RuntimeError:
+    pass
+
 #!/usr/bin/env python3
 """Validate spatial graph construction and neighbourhood statistics.
 
@@ -85,7 +97,10 @@ check("Radius graph has more variable degree than kNN",
 
 # --- Neighbourhood enrichment ---
 print("\nNeighbourhood enrichment...")
-sq.gr.nhood_enrichment(a_del, cluster_key=cluster_key, n_perms=100, seed=0)
+# n_jobs=1: the permutation test otherwise spawns workers that re-import
+# this module. On macOS (spawn start method) that recurses and dies with
+# a RuntimeError/EOFError rather than a useful message.
+sq.gr.nhood_enrichment(a_del, cluster_key=cluster_key, n_perms=100, seed=0, n_jobs=1)
 check("Enrichment results stored", f"{cluster_key}_nhood_enrichment" in a_del.uns)
 
 zscore = a_del.uns[f"{cluster_key}_nhood_enrichment"]["zscore"]
@@ -100,7 +115,7 @@ check("Self-enrichment is positive on average", np.nanmean(diag) > 0)
 
 # --- The graph determines the answer ---
 print("\nGraph sensitivity of enrichment...")
-sq.gr.nhood_enrichment(a_knn, cluster_key=cluster_key, n_perms=100, seed=0)
+sq.gr.nhood_enrichment(a_knn, cluster_key=cluster_key, n_perms=100, seed=0, n_jobs=1)
 z_knn = a_knn.uns[f"{cluster_key}_nhood_enrichment"]["zscore"]
 
 mask = ~(np.isnan(zscore) | np.isnan(z_knn))

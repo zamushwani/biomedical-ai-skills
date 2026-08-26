@@ -50,13 +50,28 @@ print(f"  y range: {coords[:, 1].min():.0f} to {coords[:, 1].max():.0f}")
 check("Image metadata attached", "spatial" in adata.uns)
 
 # --- QC metrics ---
-print("\nQC metrics...")
-adata.var["mt"] = adata.var_names.str.lower().str.startswith("mt-")
-n_mt = int(adata.var["mt"].sum())
+# This dataset ships LOG-NORMALIZED values in .X (range ~0-8.9, non-integer)
+# with the true integer counts in .raw. QC percentages computed on .X are
+# meaningless: you cannot sum log-normalized values and call the ratio a
+# fraction of counts. Measured here: mito % is 0.92 off .X and 15.7 off .raw.
+# Use the counts.
+check("Distributed .X is normalized, not raw counts",
+      float(adata.X.min()) >= 0 and not float(adata.X.max()).is_integer())
+check("True integer counts are available in .raw", adata.raw is not None)
+
+qc = adata.raw.to_adata() if adata.raw is not None else adata.copy()
+qc.obsm = adata.obsm
+
+print("\nQC metrics (computed on raw counts)...")
+qc.var["mt"] = qc.var_names.str.lower().str.startswith("mt-")
+n_mt = int(qc.var["mt"].sum())
 print(f"  Mitochondrial genes: {n_mt}")
 check("Mouse MT genes found (mt- prefix, lowercase)", n_mt >= 10)
 
-sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
+sc.pp.calculate_qc_metrics(qc, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
+adata.obs["total_counts"] = qc.obs["total_counts"].values
+adata.obs["n_genes_by_counts"] = qc.obs["n_genes_by_counts"].values
+adata.obs["pct_counts_mt"] = qc.obs["pct_counts_mt"].values
 
 med_counts = float(np.median(adata.obs["total_counts"]))
 med_genes = float(np.median(adata.obs["n_genes_by_counts"]))
@@ -69,7 +84,7 @@ print(f"  Median mito %:     {med_mt:.1f}")
 # A Visium spot pools 1-10 cells, so depth is far above single-cell.
 check("Median UMI/spot > 5000 (spots pool multiple cells)", med_counts > 5000)
 check("Median genes/spot > 2000", med_genes > 2000)
-check("Median mito % is plausible (1-40%)", 1 < med_mt < 40)
+check("Median mito % is plausible on counts (1-40%)", 1 < med_mt < 40)
 
 # --- Spot counts are spatially structured, not random ---
 # This is the property that separates a tissue section from a well plate.
