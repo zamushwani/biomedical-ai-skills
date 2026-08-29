@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "biomedical-ai-skills"
-version = "0.11.0"
+version = "0.12.0"
 description = "SKILL.md files that give AI coding agents tested protocols for cancer bioinformatics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -66,6 +66,7 @@ packages = ["src/biomedical_ai_skills"]
 "skills/biomedical-mcp/SKILL.md" = "biomedical_ai_skills/skills/biomedical-mcp/SKILL.md"
 "skills/multiomics-integration/SKILL.md" = "biomedical_ai_skills/skills/multiomics-integration/SKILL.md"
 "skills/checkpoint-biomarkers/SKILL.md" = "biomedical_ai_skills/skills/checkpoint-biomarkers/SKILL.md"
+"skills/radiotherapy-response/SKILL.md" = "biomedical_ai_skills/skills/radiotherapy-response/SKILL.md"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -84,6 +85,7 @@ include = [
     "skills/biomedical-mcp",
     "skills/multiomics-integration",
     "skills/checkpoint-biomarkers",
+    "skills/radiotherapy-response",
     ".claude/commands",
     "README.md",
     "CHANGELOG.md",

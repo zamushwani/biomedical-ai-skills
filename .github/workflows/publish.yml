@@ -44,6 +44,7 @@ jobs:
               "biomedical-mcp",
               "multiomics-integration",
               "checkpoint-biomarkers",
+              "radiotherapy-response",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {

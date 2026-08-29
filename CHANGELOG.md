@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-29
+
+### Added
+- radiotherapy-response skill: DNA damage repair profiling by pathway, the Radiosensitivity Index and the Genomic-Adjusted Radiation Dose, post-irradiation immune signatures, and the abscopal effect
+- Writes the RSI model out in full because **no package implements it** on CRAN, Bioconductor or PyPI: the ten genes (AR, JUN, STAT1, PRRT2, RELA, ABL1, SUMO1, CDK1, HDAC9, IRF1) with their published coefficients
+- Records the two errors that invert the result: the model's inputs are within-sample **ranks** rather than expression values, and a **higher RSI means more radio-resistant** because the score predicts survival fraction at 2 Gy, which the name obscures. Ranking within the ten genes rather than across the transcriptome destroys the signal while still producing plausible output
+- Records that GARD is dose-dependent by construction and meaningless without total dose, fractionation and the assumed alpha/beta ratio, and that dose adjustment from RSI or GARD is investigational and directly contested in the literature, so the skill reports scores rather than prescriptions
+- Records that DDR is not one pathway, since HR deficiency sensitizes to radiation while MMR deficiency drives MSI instead, that msigdbr renamed `category`/`subcategory` to `collection`/`subcollection`, and that it moved to calendar versioning (10.0.2 to 24.1.0 to 26.1.1) so semantic version pins misbehave
+- States plainly that no validated abscopal biomarker panel exists, and that mechanistic correlates should be labelled mechanistic rather than predictive
+
 ## [0.11.0] - 2026-08-29
 
 ### Added
@@ -225,7 +235,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...v0.9.0
