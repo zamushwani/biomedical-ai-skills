@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-29
+
+### Added
+- multiomics-integration skill: choosing an integration method from the question rather than by popularity, the preprocessing that decides whether integration works at all, MOFA+ factor analysis, similarity network fusion, joint clustering with iClusterPlus, supervised integration with DIABLO, and survival models on integrated features
+- Records that CRAN carries mixOmics 6.3.2 from 2018 while Bioconductor has 6.36.0, so `install.packages()` silently returns an eight-year-old API, and that SNFtool was last released 2021-06-11
+- Records that MOFA2's R package is a front end over the Python solver mofapy2, that `run_mofa()` takes `use_basilisk = FALSE` by default and so uses whatever Python reticulate finds, and that its managed environment pins numpy 1.26.4
+- States the preprocessing rules that decide the result: report the sample intersection, centre and scale each view, select features per view because a 20,000-gene view dominates a 100-protein one even after scaling, and use M-values rather than beta-values for variance-based selection
+- States the interpretation rules: `num_factors` is an upper bound, a factor loading on one view is that view's internal structure, MOFA Factor 1 is usually purity or sex or batch, SNF returns a similarity matrix rather than clusters, and testing survival across clusters on the samples that defined them is circular
+
 ## [0.9.0] - 2026-08-26
 
 ### Added
@@ -207,7 +216,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.2...v0.7.3

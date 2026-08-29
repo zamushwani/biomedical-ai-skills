@@ -42,6 +42,7 @@ jobs:
               "clinical-nlp",
               "computational-pathology",
               "biomedical-mcp",
+              "multiomics-integration",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {
