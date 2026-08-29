@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-29
+
+### Added
+- checkpoint-biomarkers skill: separating the assay-derived checkpoint biomarkers from the expression-derived ones, PD-L1 scoring and its antibody-clone dependence, TMB and MSI as predictive calls, and the IFN-gamma, TIS and TIDE signatures that RNA can produce
+- Corrects a common request directly: **CPS and TPS cannot be computed from expression data**. Both are counts of individual stained cells on an IHC slide, and CPS additionally requires distinguishing a stained tumour cell from a stained lymphocyte or macrophage. Bulk RNA has no cells in it, so `CD274` expression is a correlate of PD-L1 IHC rather than a substitute, and a CPS estimated from expression has no clinical meaning
+- Records that PD-L1 assays are not interchangeable (22C3, 28-8, SP142, SP263), that SP142 stains a smaller fraction so the same sample can flip between assays, and that a result without the clone, scoring system and cutoff is not reportable
+- Records the GSVA 2.6.6 breaking API change: the package dispatches on parameter objects such as `ssgseaParam()`, and the 1.x `gsva(expr, gene_sets, method = ...)` call no longer exists
+- Records that the TIDE web tool returns HTTP 403 to programmatic requests with `tidepy` 1.3.9 as the scripted route, that TIDE expects expression normalized against a control cohort, and that a mean-of-z-scores changes every earlier sample's score when new samples are added
+
 ## [0.10.0] - 2026-08-29
 
 ### Added
@@ -216,7 +225,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.7.3...v0.8.0

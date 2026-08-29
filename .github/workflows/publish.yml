@@ -43,6 +43,7 @@ jobs:
               "computational-pathology",
               "biomedical-mcp",
               "multiomics-integration",
+              "checkpoint-biomarkers",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {
