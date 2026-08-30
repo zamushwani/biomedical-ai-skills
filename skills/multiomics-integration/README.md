@@ -57,6 +57,21 @@ clusters + feature selection -> iClusterPlus, slow, needs tuning
 | DIABLO performance | It selects features using Y. Training performance is not evidence — hold out, select inside the fold |
 | Cluster survival tests | Testing survival across clusters on the samples that defined them is circular |
 
+## Validation
+
+Tests in [`tests/`](tests/) check the package claims against the live registries.
+
+**Executed 2026-08-30: 11 assertions, 0 failures** (Python 3.13.5). Needs network; skips cleanly without it.
+
+| Check | Result |
+|---|---|
+| mixOmics on CRAN | **6.3.2 (2018-06-01)** vs Bioconductor 6.36.0 |
+| SNFtool | 2.3.1 (**2021-06-11**) |
+| `run_mofa()` | carries **`use_basilisk = FALSE`**, read from source |
+| variance ratio after scaling | **200:1** — imbalance survives scaling |
+
+`crandb.r-pkg.org` returns **HTTP 403** to urllib's default User-Agent, so a scripted CRAN check needs an explicit one.
+
 ## Verified 2026-08
 
 | Package | Version | Note |

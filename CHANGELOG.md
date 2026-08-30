@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-30
+
+### Added
+- Benchmark framework: `tools/run_benchmarks.py` discovers every skill's validation suite, runs it, and reports pass/fail/skip counts with wall-clock time. The status column distinguishes a suite that ran and failed from one that could not run because a dependency or network is absent, which is the difference between broken code and an unconfigured machine
+- Validation suites for the four skills that had none, closing the gap: multiomics-integration (11 assertions), checkpoint-biomarkers (9), radiotherapy-response (11) and epigenomics (16). **All sixteen skills now carry a suite**
+- radiotherapy-response tests demonstrate the rank-basis error numerically: ranking within the ten RSI genes gives every sample exactly 1..10 and collapses between-sample variance by roughly 1,800-fold, while still returning a plausible number
+- checkpoint-biomarkers tests measure the cohort-dependence claim: after adding ten samples, mean-of-z scores for the original twenty move by up to 0.5285 while rank-based single-sample scores move by exactly 0
+- epigenomics tests check each DiffBind claim twice, once against the package's own NEWS file and once that SKILL.md still records it, so a future release that changes the story surfaces in the suite
+- multiomics-integration tests confirm mixOmics on CRAN is still 6.3.2 from 2018, that `run_mofa()` carries `use_basilisk = FALSE` read from source, and that per-feature scaling leaves a 200:1 variance imbalance between a 20,000-gene and a 100-protein view
+
+### Fixed
+- Three R test runners (cancer-multiomics, immune-deconvolution, survival-analysis) could not execute under `Rscript` at all. They resolved their script directory with a bare `dirname(sys.frame(1)$ofile)`, which errors outside a `source()` call before the intended fallback line can run. Wrapping it in `tryCatch`, as the three newer runners already did, fixes it: cancer-multiomics goes from zero assertions to 27. The benchmark runner found this
+
 ## [0.13.0] - 2026-08-30
 
 ### Added
@@ -245,7 +258,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...v0.11.0

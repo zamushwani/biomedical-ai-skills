@@ -63,6 +63,14 @@ Two current issues in 3.22.x:
 | Nearest TSS | An assumption, not a result. Enhancers routinely skip the nearest gene |
 | ATAC + RNA across studies | The correlation measures study differences as much as regulation |
 
+## Validation
+
+Tests in [`tests/`](tests/) check the DiffBind claims against the package's **own NEWS file**, so a future release that changes the story surfaces here.
+
+**Executed 2026-08-30: 16 assertions, 0 failures** (Python 3.13.5). Needs network; skips cleanly without it.
+
+Each claim is verified twice — once upstream, once that `SKILL.md` still records it: the 401 bp summit default, `design=FALSE`, the `dba.normalize()` move, the 3.22.2 `bSubControl` fix, and `dba.plotProfile()` being disabled. Plus MACS3 3.0.4 vs MACS2 2.2.9.1, and JASPAR2024 present with JASPAR2026 absent.
+
 ## Verified 2026-08
 
 | Tool | Version | Note |

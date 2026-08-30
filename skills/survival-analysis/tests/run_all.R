@@ -27,7 +27,9 @@ cat(sprintf("Date: %s\n", Sys.time()))
 cat(sprintf("R version: %s\n", R.version.string))
 cat(sprintf("Tests to run: %s\n\n", paste(tests, collapse = ", ")))
 
-script_dir <- dirname(sys.frame(1)$ofile)
+# sys.frame(1) exists only when this file is source()d. Under Rscript it
+# errors outright, so the fallback must be inside tryCatch, not after it.
+script_dir <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) ".")
 if (is.null(script_dir) || script_dir == "") script_dir <- "."
 
 for (test in tests) {

@@ -61,6 +61,19 @@ And a third that looks fine in the output: **rank across the whole transcriptome
 | Post-RT tissue | Contains fibrosis, necrosis and treatment effect — change may be composition, not regulation |
 | Abscopal | **No validated biomarker panel exists.** Mechanistic correlates are mechanistic, not predictive |
 
+## Validation
+
+Tests in [`tests/`](tests/) treat the model in SKILL.md as the specification, since no package implements RSI.
+
+**Executed 2026-08-30: 11 assertions, 0 failures** (Python 3.13.5). Synthetic, fixed seed, no download.
+
+| Rank basis | Value range | RSI sd |
+|---|---|---|
+| full transcriptome (correct) | 20 – 19,980 | **719.6** |
+| within the ten genes (wrong) | 1 – 10 | **0.39** |
+
+Ranking within the ten collapses between-sample variance by **~1,800×** while still returning a plausible number.
+
 ## Verified 2026-08
 
 | Tool | Version | Note |

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "biomedical-ai-skills"
-version = "0.13.0"
+version = "0.14.0"
 description = "SKILL.md files that give AI coding agents tested protocols for cancer bioinformatics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -89,6 +89,7 @@ include = [
     "skills/radiotherapy-response",
     "skills/epigenomics",
     ".claude/commands",
+    "tools",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

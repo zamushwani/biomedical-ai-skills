@@ -60,6 +60,21 @@ Bulk RNA gives one `CD274` value per sample. It has no cells in it, so it cannot
 | IFN-γ + TIS | Overlap by construction — not independent evidence |
 | Composite scores | Biomarkers disagree by design. A single "immunotherapy score" needs external validation almost none have |
 
+## Validation
+
+Tests in [`tests/`](tests/) measure the cohort-dependence claim directly.
+
+**Executed 2026-08-30: 9 assertions, 0 failures** (Python 3.13.5). Synthetic, fixed seed, no download.
+
+Scores for the **same first 20 samples** after adding 10 more:
+
+| Scoring method | max \|change\| |
+|---|---|
+| mean-of-z | **0.5285** |
+| rank-based single-sample | **0.0000** |
+
+Recomputing a mean-of-z signature after accrual silently rewrites every earlier score.
+
 ## Verified 2026-08
 
 | Tool | Version | Note |
