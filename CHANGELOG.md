@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-30
+
+### Added
+- epigenomics skill: ATAC-seq and ChIP-seq from the filtering that precedes peak calling through differential binding, motif enrichment, TF-motif activity and peak-to-gene assignment
+- Records three DiffBind 3.x changes verified from the package's own NEWS that alter results without erroring: `dba.count()` now centres on summits by default giving 401 bp intervals where earlier versions did not recentre, the modelling default changed so reproducing a pre-3.0 analysis needs `dba.contrast(design = FALSE)`, and the normalization options `bSubControl`, `bFullLibrarySize`, `filter` and `filterFun` moved from `dba.analyze()` to the new `dba.normalize()` and are silently lost otherwise
+- Records two current DiffBind issues: before 3.22.2 a `bSubControl` set in `dba.count()` was not preserved so analysis could silently fall back to control subtraction, and `dba.plotProfile()` has been disabled since 3.22.1 because its backend is uninstallable, returning NULL invisibly
+- Records that development moved from MACS2 (last released 2023-07) to MACS3 3.0.4, that ATAC needs `--nomodel` because MACS's paired-peak model assumes point-source ChIP structure, and that combining `BAMPE` with `--shift` double-corrects fragments that are already correctly placed
+- States the pre-peak filtering that decides the result: mitochondrial reads routinely take 20-50% of an ATAC library, the ENCODE blacklist otherwise produces confident peaks in every sample, and the Tn5 shift is +4/-5 because Tn5 inserts as a dimer spanning 9 bp
+- States that motif background must be GC- and accessibility-matched, that chromVAR reports TF-motif rather than TF activity, that the JASPAR release changes enrichment invisibly (2024 is the latest; 2026 does not exist), and that nearest-TSS assignment is an assumption rather than a target
+
 ## [0.12.0] - 2026-08-29
 
 ### Added
@@ -235,7 +245,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.9.0...v0.10.0

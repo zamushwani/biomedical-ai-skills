@@ -45,6 +45,7 @@ jobs:
               "multiomics-integration",
               "checkpoint-biomarkers",
               "radiotherapy-response",
+              "epigenomics",
           }
           wheel = glob.glob("dist/*.whl")[0]
           found = {
