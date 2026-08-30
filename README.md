@@ -16,7 +16,7 @@ SKILL.md files for cancer bioinformatics. Drop one into your project and your AI
 [![Bioconductor](https://img.shields.io/badge/Bioconductor-3.19-87b13f?style=flat-square&labelColor=1a1a2e)](https://bioconductor.org/)
 [![TCGA](https://img.shields.io/badge/TCGA-GDC_Portal-e84d3c?style=flat-square&labelColor=1a1a2e)](https://portal.gdc.cancer.gov/)
 
-**Works with** Claude Code · Cursor · Codex CLI · Gemini CLI
+**Works with** [Claude Code](https://github.com/zamushwani/biomedical-ai-skills/blob/main/CLAUDE.md) · [Cursor](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.cursor/rules/biomedical-skills.mdc) · [Codex CLI](https://github.com/zamushwani/biomedical-ai-skills/blob/main/AGENTS.md) · [Gemini CLI](https://github.com/zamushwani/biomedical-ai-skills/blob/main/GEMINI.md)
 
 <img src="https://raw.githubusercontent.com/zamushwani/biomedical-ai-skills/main/assets/workflow.png" width="820" alt="Browse skills, copy SKILL.md to your project, the agent reads domain protocols, you get correct code with tested parameters">
 
@@ -44,6 +44,28 @@ SKILL.md files for cancer bioinformatics. Drop one into your project and your AI
 | [`radiotherapy-response`](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/radiotherapy-response/) | Genomic predictors of radiation response — the Radiosensitivity Index written out in full (no package implements it), why its inputs are ranks and why higher means *resistant*, GARD and its dose dependence, DNA damage repair scored by pathway rather than as one block ([msigdbr](https://cran.r-project.org/package=msigdbr)), post-irradiation immune signatures, and the abscopal effect's lack of a validated predictor | [validated](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/radiotherapy-response/tests/) |
 | [`epigenomics`](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/epigenomics/) | ATAC-seq and ChIP-seq — the filtering before peak calling (chrM, [ENCODE blacklist](https://github.com/Boyle-Lab/Blacklist), Tn5 shift), ATAC peak calling with [MACS3](https://macs3-project.github.io/MACS/), differential binding and the [DiffBind](https://bioconductor.org/packages/DiffBind/) 3.x defaults that silently change results, motif enrichment and [chromVAR](https://bioconductor.org/packages/chromVAR/) TF-motif activity, and peak-to-gene assignment where nearest is not target | [validated](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/epigenomics/tests/) |
 | [`meta-analysis`](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/meta-analysis/) | Systematic review from protocol to synthesis — PROSPERO pre-specification, PICO search construction (MeSH, Emtree, [Cochrane CHSSS](https://training.cochrane.org/handbook)), deduplication ([synthesisr](https://cran.r-project.org/package=synthesisr)), two-reviewer screening with [kappa](https://cran.r-project.org/package=irr), [PRISMA 2020](https://www.prisma-statement.org/) flow diagrams, data extraction, risk of bias ([RoB 2](https://www.riskofbias.info/), ROBINS-I, ROBINS-E, [robvis](https://cran.r-project.org/package=robvis)), pooling with [metafor](https://cran.r-project.org/package=metafor) (REML, Knapp-Hartung, prediction intervals), subgroup analysis, meta-regression, small-study effects, network meta-analysis ([netmeta](https://cran.r-project.org/package=netmeta), transitivity, inconsistency, rankings) and GRADE/CINeMA certainty | [BCG](https://github.com/zamushwani/biomedical-ai-skills/tree/main/skills/meta-analysis/tests/) |
+
+## Cross-platform
+
+Each skill is plain Markdown with no agent-specific syntax, so the same file works in any tool that reads Markdown. Each platform's entry file is present:
+
+| File | Read by |
+|---|---|
+| [`AGENTS.md`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/AGENTS.md) | Codex CLI, Cursor (Agent mode), Copilot, Zed, Windsurf and others — the cross-tool standard |
+| [`CLAUDE.md`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/CLAUDE.md) | Claude Code |
+| [`GEMINI.md`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/GEMINI.md) | Gemini CLI |
+| [`.cursor/rules/*.mdc`](https://github.com/zamushwani/biomedical-ai-skills/blob/main/.cursor/rules/biomedical-skills.mdc) | Cursor Chat and Composer, which do not read `AGENTS.md` |
+
+`AGENTS.md` is the single source of truth; the others point at it.
+
+```bash
+python3 tools/check_portability.py
+```
+
+That check verifies the entry files exist and agree on the skill count, and that no `SKILL.md` has acquired an argument placeholder, file-include directive or inline shell execution — syntax that renders fine as Markdown but only *means* something in one tool.
+
+**What is and is not verified.** The format contracts above were read from each tool's documentation, and portability is enforced by the check. The skills have **not** been executed inside Cursor, Codex CLI or Gemini CLI, because that needs those tools installed. The claim is that the files are readable and tool-neutral, not that each workflow has been run end to end in every client.
+
 
 ## Benchmarks
 

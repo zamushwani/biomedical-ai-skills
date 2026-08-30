@@ -1,0 +1,23 @@
+---
+description: Biomedical AI Skills — protocol files for cancer bioinformatics, and the rules for changing them
+globs: skills/**/*.md,tools/*.py,pyproject.toml
+alwaysApply: false
+---
+
+# Biomedical AI Skills
+
+This repository is a library of **16 SKILL.md protocol files** under `skills/`. Each is a self-contained protocol for one domain: what to run, which parameter values and why, and the mistakes that produce plausible-looking wrong answers.
+
+Read the relevant `skills/<name>/SKILL.md` before writing analysis code in that domain. The full instructions are in [AGENTS.md](../../AGENTS.md) — Cursor's Agent mode reads that file directly, while Chat and Composer read this rule.
+
+## Rules for changing a skill
+
+1. Verify every version, signature and default against the registry and package source in the current session. Never write one from memory.
+2. A skill edit must be released in the same session, or `pip install` serves stale content.
+3. A green CI run is not proof. Verify the published artifact.
+4. Never claim a test passes unless it was executed.
+5. Stage explicit paths. Never `git add .` — untracked personal files sit in the repository root.
+
+## Portability
+
+Skills must stay tool-neutral: no argument placeholders, no file-include directives, no inline shell execution syntax. That is what lets the same file work across Claude Code, Codex CLI, Cursor and Gemini CLI. `python3 tools/check_portability.py` enforces it.

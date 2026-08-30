@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-30
+
+### Added
+- Cross-platform entry files, so the compatibility claim in the README is backed by something. `AGENTS.md` is the cross-tool standard read natively by Codex CLI, Cursor's Agent mode, Copilot, Zed and Windsurf among others; `GEMINI.md` for Gemini CLI; and `.cursor/rules/biomedical-skills.mdc` for Cursor's Chat and Composer modes, which do not read `AGENTS.md`. `AGENTS.md` is the single source of truth and the others point at it
+- `tools/check_portability.py`, run this session with 15 assertions and 0 failures. It verifies each platform's entry file exists, that they agree on the skill count, that `AGENTS.md` names every published skill and carries no frontmatter (the spec forbids it), that the Cursor rule uses only documented frontmatter fields, and that no `SKILL.md` has acquired agent-specific syntax such as an argument placeholder, a file-include directive or inline shell execution
+- The check was itself verified by injecting a `$ARGUMENTS` placeholder into a skill and a skill-count drift into `AGENTS.md` in a scratch copy; both were caught
+
+### Changed
+- The README's "Works with" line now links each platform to its entry file, and a new Cross-platform section states plainly what is verified and what is not: the format contracts were read from each tool's documentation and portability is enforced by the check, but the skills have not been executed inside Cursor, Codex CLI or Gemini CLI, which would require those tools installed
+- The adapter files ship with the source distribution
+
 ## [0.14.0] - 2026-08-30
 
 ### Added
@@ -258,7 +269,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - single-cell-atlas skill (Part 3 — downstream): pseudobulk DE (DESeq2 via scuttle/decoupleR, not Wilcoxon), trajectory inference (PAGA + DPT, Monocle3, scVelo dynamical mode), cell-cell communication (CellChat v2, LIANA+ consensus), TF activity (decoupleR + CollecTRI, pySCENIC for GRN discovery)
 - Repository structure, contributing guidelines, security policy
 
-[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/zamushwani/biomedical-ai-skills/compare/v0.11.0...v0.12.0
